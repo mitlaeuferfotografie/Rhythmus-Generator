@@ -79,8 +79,33 @@ h1, h2, h3 { margin: 0; }
 .btn:disabled { opacity: 0.4; cursor: default; }
 
 .btn-secondary { background: #565656; }
-.btn-play { background: var(--ok); }
-.btn-stop { background: var(--warn); }
+
+/* Ein einziger Play/Stopp-Knopf statt zwei getrennter Buttons - fest am
+   unteren Bildschirmrand statt in der Werkzeugleiste, damit oben mehr
+   Platz bleibt und der Knopf immer erreichbar ist, egal wie weit man
+   durch die Takte gescrollt hat. */
+.play-pause-btn {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  z-index: 30;
+  padding: 16px 36px;
+  border: none;
+  border-radius: 999px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--paper);
+  background: var(--ok);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  min-height: 56px;
+  min-width: 200px;
+}
+
+.play-pause-btn.is-playing {
+  background: var(--warn);
+}
 
 .tempo-label, .metronome-label {
   display: flex;
@@ -245,7 +270,7 @@ h1, h2, h3 { margin: 0; }
 }
 
 main {
-  padding: 20px 24px;
+  padding: 20px 24px 100px;
 }
 
 .score {

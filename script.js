@@ -285,10 +285,11 @@ function renderMeasure(measure, index) {
   return wrap;
 }
 
-// Zwei benachbarte einzelne Achtel, die exakt auf einer Zählzeit beginnen
-// (z. B. Position 0+1, 2+3, 4+5, 6+7), werden als verbundenes Paar mit
-// gemeinsamem Balken dargestellt - unabhängig davon, ob sie über die
-// "Achtelpaar"-Karte oder einzeln als "Achtel" hineingezogen wurden.
+// Zwei direkt aufeinanderfolgende einzelne Achtel werden als verbundenes
+// Paar mit gemeinsamem Balken dargestellt - unabhängig davon, auf welcher
+// Zählzeit sie stehen (auch wenn die erste z. B. bei "+" beginnt) und ob
+// sie über die "Achtelpaar"-Karte oder einzeln als "Achtel" hineingezogen
+// wurden.
 function renderMeasureNotes(track, measure) {
   const layout = layoutNotes(measure);
   let i = 0;
@@ -299,7 +300,6 @@ function renderMeasureNotes(track, measure) {
       cur.type.id === 'eighth' &&
       next &&
       next.type.id === 'eighth' &&
-      cur.start % 2 === 0 &&
       next.start === cur.start + 1;
 
     if (canPair) {
@@ -706,8 +706,8 @@ function play() {
   if (state.isPlaying) return;
   ensureAudioContext();
   state.isPlaying = true;
-  playBtn.disabled = true;
-  stopBtn.disabled = false;
+  playPauseBtn.textContent = '■ Stopp';
+  playPauseBtn.classList.add('is-playing');
 
   const secondsPerBeat = 60 / state.bpm;
   const unitSeconds = secondsPerBeat / 2;
@@ -835,16 +835,15 @@ function stop() {
   activeTimeouts = [];
   stopCursor();
   state.isPlaying = false;
-  playBtn.disabled = false;
-  stopBtn.disabled = true;
+  playPauseBtn.textContent = '▶ Abspielen';
+  playPauseBtn.classList.remove('is-playing');
 }
 
 /* ============================================================
    Toolbar
    ============================================================ */
 
-const playBtn = document.getElementById('playBtn');
-const stopBtn = document.getElementById('stopBtn');
+const playPauseBtn = document.getElementById('playPauseBtn');
 const bpmSlider = document.getElementById('bpmSlider');
 const bpmValue = document.getElementById('bpmValue');
 const metronomeToggle = document.getElementById('metronomeToggle');
@@ -852,8 +851,10 @@ const repeatInput = document.getElementById('repeatInput');
 
 document.getElementById('addMeasureBtn').addEventListener('click', addMeasure);
 document.getElementById('clearBtn').addEventListener('click', clearAll);
-playBtn.addEventListener('click', play);
-stopBtn.addEventListener('click', stop);
+playPauseBtn.addEventListener('click', () => {
+  if (state.isPlaying) stop();
+  else play();
+});
 bpmSlider.addEventListener('input', () => {
   state.bpm = Number(bpmSlider.value);
   bpmValue.textContent = state.bpm;
