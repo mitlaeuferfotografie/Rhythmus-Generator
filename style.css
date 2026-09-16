@@ -17,7 +17,7 @@
 html, body {
   margin: 0;
   padding: 0;
-  height: 100%;
+  min-height: 100%;
   background: var(--paper-alt);
   color: var(--ink);
   font-family: "Segoe UI", Verdana, Arial, sans-serif;
@@ -26,7 +26,17 @@ html, body {
   touch-action: none;
 }
 
-h1, h2 { margin: 0; }
+h1, h2, h3 { margin: 0; }
+
+/* Toolbar + Notenwerte-Palette bleiben als eine Einheit oben angepinnt,
+   damit beim Scrollen durch viele Takte immer Werkzeuge UND Notenwerte
+   erreichbar bleiben, ohne dass ihre Höhen einzeln synchronisiert werden
+   müssen. */
+.top-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
 
 /* ---------- Toolbar ---------- */
 
@@ -38,9 +48,6 @@ h1, h2 { margin: 0; }
   padding: 14px 24px;
   background: var(--ink);
   color: var(--paper);
-  position: sticky;
-  top: 0;
-  z-index: 20;
 }
 
 .toolbar h1 {
@@ -108,43 +115,53 @@ h1, h2 { margin: 0; }
 
 /* ---------- Layout ---------- */
 
-main {
-  display: flex;
-  align-items: flex-start;
-  gap: 24px;
-  padding: 24px;
-}
-
+/* Notenwerte-Palette liegt horizontal über den Takten (nicht mehr als
+   schmale Seitenleiste), damit der ganze Breitenraum für die Rhythmen
+   selbst frei bleibt. */
 .palette {
-  flex: 0 0 220px;
   background: var(--paper);
-  border: 2px solid var(--line);
-  border-radius: 14px;
-  padding: 16px;
-  position: sticky;
-  top: 100px;
+  border-bottom: 2px solid var(--line);
+  padding: 12px 24px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 16px 32px;
 }
 
-.palette h2 {
-  font-size: 1.1rem;
-  margin-bottom: 12px;
+.palette-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.palette-group h3 {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #9a968c;
 }
 
 .palette-cards {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .palette-hint {
-  margin: 14px 0 0;
-  font-size: 0.85rem;
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: 0.8rem;
   color: #6b6b6b;
 }
 
+main {
+  padding: 20px 24px;
+}
+
 .score {
-  flex: 1 1 auto;
-  min-width: 0;
+  width: 100%;
 }
 
 .measures {
@@ -463,10 +480,3 @@ main {
   cursor: default;
 }
 
-/* ---------- Responsive ---------- */
-
-@media (max-width: 900px) {
-  main { flex-direction: column; }
-  .palette { position: static; flex: none; width: 100%; }
-  .palette-cards { flex-direction: row; flex-wrap: wrap; }
-}

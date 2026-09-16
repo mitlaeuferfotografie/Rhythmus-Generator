@@ -77,9 +77,10 @@ const NOTE_TYPES = [
     name: 'Viertelpause',
     units: 2,
     isRest: true,
-    // Geschwungenes "Z" statt scharfer Zickzack-Ecken - näher an der
-    // gängigen Notenschrift-Form.
-    icon: `<svg viewBox="0 0 40 48"><path d="M21 5 C27 9 27 13 20 17 C14 21 14 25 21 30 C27 34 27 38 18 44" fill="none" stroke="#1a1a1a" stroke-width="4.5" stroke-linecap="round"/></svg>`,
+    // Eckiger Zickzack oben + ein großer runder Bogen unten, statt
+    // gleichmäßiger Wellen - so wie das echte Notenschrift-Zeichen (mit
+    // Wikipedia-Vorlage abgeglichen: https://en.wikipedia.org/wiki/Rest_(music)).
+    icon: `<svg viewBox="0 0 40 48"><path d="M24 4 L12 14 L30 20 L10 38 C6 44 18 47 24 44" fill="none" stroke="#1a1a1a" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
   },
   {
     id: 'eighthRest',
@@ -172,10 +173,12 @@ function formatBeats(units) {
    Rendering: Palette
    ============================================================ */
 
-const paletteCardsEl = document.getElementById('paletteCards');
+const paletteCardsNotesEl = document.getElementById('paletteCardsNotes');
+const paletteCardsRestsEl = document.getElementById('paletteCardsRests');
 
 function renderPalette() {
-  paletteCardsEl.innerHTML = '';
+  paletteCardsNotesEl.innerHTML = '';
+  paletteCardsRestsEl.innerHTML = '';
   PALETTE_ITEMS.forEach((item) => {
     const type = noteType(item.typeId);
     const isPair = item.kind === 'pair';
@@ -194,7 +197,7 @@ function renderPalette() {
       </span>
     `;
     card.addEventListener('pointerdown', (e) => startDragNew(e, item));
-    paletteCardsEl.appendChild(card);
+    (type.isRest ? paletteCardsRestsEl : paletteCardsNotesEl).appendChild(card);
   });
 }
 

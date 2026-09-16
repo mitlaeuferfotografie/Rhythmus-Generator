@@ -8,44 +8,54 @@
 </head>
 <body>
 
-<header class="toolbar">
-  <h1>Rhythmus-Tafel</h1>
+<div class="top-bar">
+  <header class="toolbar">
+    <h1>Rhythmus-Tafel</h1>
 
-  <div class="toolbar-group">
-    <button id="addMeasureBtn" class="btn">+ Takt</button>
-    <button id="clearBtn" class="btn btn-secondary">Alles leeren</button>
-  </div>
+    <div class="toolbar-group">
+      <button id="addMeasureBtn" class="btn">+ Takt</button>
+      <button id="clearBtn" class="btn btn-secondary">Alles leeren</button>
+    </div>
 
-  <div class="toolbar-group">
-    <label class="tempo-label">
-      Tempo: <span id="bpmValue">90</span> BPM
-      <input type="range" id="bpmSlider" min="40" max="180" value="90">
-    </label>
-    <label class="metronome-label">
-      <input type="checkbox" id="metronomeToggle" checked>
-      Grundschlag
-    </label>
-    <label class="repeat-label">
-      Wiederholungen:
-      <input type="number" id="repeatInput" min="1" max="50" value="4">
-    </label>
-  </div>
+    <div class="toolbar-group">
+      <label class="tempo-label">
+        Tempo: <span id="bpmValue">90</span> BPM
+        <input type="range" id="bpmSlider" min="40" max="180" value="90">
+      </label>
+      <label class="metronome-label">
+        <input type="checkbox" id="metronomeToggle" checked>
+        Grundschlag
+      </label>
+      <label class="repeat-label">
+        Wiederholungen:
+        <input type="number" id="repeatInput" min="1" max="50" value="4">
+      </label>
+    </div>
 
-  <div class="toolbar-group">
-    <button id="playBtn" class="btn btn-play">▶ Abspielen</button>
-    <button id="stopBtn" class="btn btn-stop" disabled>■ Stopp</button>
-  </div>
-</header>
+    <div class="toolbar-group">
+      <button id="playBtn" class="btn btn-play">▶ Abspielen</button>
+      <button id="stopBtn" class="btn btn-stop" disabled>■ Stopp</button>
+    </div>
+  </header>
 
-<main>
   <section class="palette" aria-label="Notenwerte-Palette">
-    <h2>Notenwerte</h2>
-    <div class="palette-cards" id="paletteCards">
-      <!-- populated by script.js -->
+    <div class="palette-group">
+      <h3>Noten</h3>
+      <div class="palette-cards" id="paletteCardsNotes">
+        <!-- populated by script.js -->
+      </div>
+    </div>
+    <div class="palette-group">
+      <h3>Pausen</h3>
+      <div class="palette-cards" id="paletteCardsRests">
+        <!-- populated by script.js -->
+      </div>
     </div>
     <p class="palette-hint">Karte in einen Takt ziehen</p>
   </section>
+</div>
 
+<main>
   <section class="score" aria-label="Rhythmus-Partitur">
     <div id="measures" class="measures">
       <!-- measures populated by script.js -->
