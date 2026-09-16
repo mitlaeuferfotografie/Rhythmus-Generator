@@ -87,10 +87,10 @@ const NOTE_TYPES = [
     name: 'Achtelpause',
     units: 1,
     isRest: true,
-    // Fähnchen (wie bei der Achtelnote, aber ohne Notenkopf/Hals) an einem
-    // schrägen Strich - Fähnchen deutlich größer als der Strich breit ist,
-    // damit es klar als eigene Form erkennbar bleibt statt zu verschmelzen.
-    icon: `<svg viewBox="0 0 40 48"><path d="M26 5 C33 7 34 15 27 20 C25 21.5 23 20 23.5 17.5 C26.5 14.5 26.5 9 26 5 Z" fill="#1a1a1a"/><line x1="24" y1="19" x2="11" y2="41" stroke="#1a1a1a" stroke-width="3.5" stroke-linecap="round"/></svg>`,
+    // Ein durchgehender, dünner Strich mit einer kompakten Schlaufe oben
+    // (wie ein "7" mit eingerolltem Kopf) statt einer dicken, verschmolzenen
+    // Fläche - mit der Wikipedia-Vorlage abgeglichen.
+    icon: `<svg viewBox="0 0 40 48"><path d="M25 8 C29 9 29 14 25 16 C23.5 16.8 22.5 15.5 23 14 L12 40" fill="none" stroke="#1a1a1a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
   },
 ];
 
