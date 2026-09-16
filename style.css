@@ -191,12 +191,20 @@ main {
   border: 3px solid var(--line);
   border-radius: 14px;
   padding: 12px 16px 16px;
-  overflow-x: auto;
+  overflow: hidden;
   transition: border-color 0.15s, background 0.15s;
 }
 
 .measure.status-voll { border-color: var(--ok); background: var(--ok-bg); }
 .measure.status-uebervoll { border-color: var(--warn); background: var(--warn-bg); }
+
+/* Übervoll: die überzähligen Noten laufen einfach sichtbar aus (statt
+   einen Scrollbalken zu brauchen) - der rote Rahmen + "Übervoll!" sagen
+   bereits klar genug, dass es nicht passt. */
+.measure.status-uebervoll .slot-track {
+  -webkit-mask-image: linear-gradient(to right, black 0, black 92%, transparent 100%);
+  mask-image: linear-gradient(to right, black 0, black 92%, transparent 100%);
+}
 
 .measure-header {
   display: flex;
@@ -408,6 +416,10 @@ main {
 .measure.preview-overfull .insert-preview {
   border-color: var(--warn);
   background: rgba(224, 49, 49, 0.1);
+}
+.measure.preview-overfull .slot-track {
+  -webkit-mask-image: linear-gradient(to right, black 0, black 92%, transparent 100%);
+  mask-image: linear-gradient(to right, black 0, black 92%, transparent 100%);
 }
 
 /* Die gerade gezogene Note verschwindet kurz aus ihrer alten Position,
