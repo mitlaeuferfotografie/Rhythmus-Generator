@@ -477,19 +477,29 @@ function beginGhost(html) {
 // Während des Ziehens bekommt die Note sofort ihre echte Feld-Breite direkt
 // im Takt zu sehen (nicht nur als loser Cursor-Anhang) - so ist auf einen
 // Blick klar, wie viel Platz noch da ist und ob die Note überhaupt passt.
+let lastPointerX = 0;
+let lastPointerY = 0;
+
 function onDragMove(e) {
   if (!drag) return;
+  lastPointerX = e.clientX;
+  lastPointerY = e.clientY;
   dragGhost.style.left = `${e.clientX}px`;
   dragGhost.style.top = `${e.clientY}px`;
 
+  updateAutoScroll(e.clientY);
+  updateDragVisuals(e.clientX, e.clientY);
+}
+
+function updateDragVisuals(clientX, clientY) {
   clearDragHighlights();
 
-  const track = trackUnderPoint(e.clientX, e.clientY);
+  const track = trackUnderPoint(clientX, clientY);
   if (!track) return;
   track.classList.add('drag-over');
 
   const excludeNoteId = drag.kind === 'move' ? drag.noteId : null;
-  const { referenceEl } = computeDropIndex(track, e.clientX, excludeNoteId);
+  const { referenceEl } = computeDropIndex(track, clientX, excludeNoteId);
 
   const pct = unitsToPercent(drag.units);
   const preview = document.createElement('div');
@@ -509,6 +519,44 @@ function onDragMove(e) {
   );
   const wouldBeUnits = existingUnits + drag.units;
   track.closest('.measure').classList.toggle('preview-overfull', wouldBeUnits > UNITS_PER_MEASURE);
+}
+
+// Auto-Scroll beim Ziehen: kommt der Finger/Cursor nah an den oberen oder
+// unteren Bildschirmrand, scrollt die Seite von selbst weiter - sonst
+// müsste man auf dem Handy VOR dem Ziehen schon exakt zum Zielort gescrollt
+// haben, weil man während des Ziehens sonst nicht mehr scrollen kann.
+const AUTOSCROLL_EDGE = 90; // px vom Rand, ab dem Auto-Scroll einsetzt
+const AUTOSCROLL_MAX_SPEED = 16; // px pro Frame direkt am Rand
+
+let autoScrollSpeed = 0;
+let autoScrollRAF = null;
+
+function updateAutoScroll(clientY) {
+  const vh = window.innerHeight;
+  if (clientY < AUTOSCROLL_EDGE) {
+    autoScrollSpeed = -AUTOSCROLL_MAX_SPEED * ((AUTOSCROLL_EDGE - clientY) / AUTOSCROLL_EDGE);
+  } else if (clientY > vh - AUTOSCROLL_EDGE) {
+    autoScrollSpeed = AUTOSCROLL_MAX_SPEED * ((clientY - (vh - AUTOSCROLL_EDGE)) / AUTOSCROLL_EDGE);
+  } else {
+    autoScrollSpeed = 0;
+  }
+  if (autoScrollSpeed !== 0 && autoScrollRAF === null) {
+    autoScrollRAF = requestAnimationFrame(autoScrollTick);
+  }
+}
+
+function autoScrollTick() {
+  autoScrollRAF = null;
+  if (!drag || autoScrollSpeed === 0) return;
+  window.scrollBy(0, autoScrollSpeed);
+  updateDragVisuals(lastPointerX, lastPointerY);
+  autoScrollRAF = requestAnimationFrame(autoScrollTick);
+}
+
+function stopAutoScroll() {
+  autoScrollSpeed = 0;
+  if (autoScrollRAF !== null) cancelAnimationFrame(autoScrollRAF);
+  autoScrollRAF = null;
 }
 
 // Läuft von einem Nachfahren (z. B. .eighth-half) zum direkten Kind von
@@ -558,6 +606,7 @@ function onDragEnd(e) {
 function cleanupDrag() {
   document.removeEventListener('pointermove', onDragMove);
   document.removeEventListener('pointerup', onDragEnd);
+  stopAutoScroll();
   dragGhost.hidden = true;
   dragGhost.innerHTML = '';
   clearDragHighlights();

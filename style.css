@@ -177,6 +177,28 @@ h1, h2, h3 { margin: 0; }
   }
 }
 
+/* Auf schmalen (Handy-)Bildschirmen sind die Karten insgesamt der größte
+   Platzfresser zwischen Palette und Takt. Zwei Karten pro Zeile statt
+   einer halbiert die nötige Scroll-Strecke - Text/Icon kleiner, aber die
+   Karte bleibt groß genug zum sicheren Antippen. */
+@media (max-width: 480px) {
+  .palette-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .note-card {
+    gap: 6px;
+    padding: 6px 8px;
+  }
+  .note-card .icon {
+    width: 26px;
+    height: 32px;
+  }
+  .note-card .label .name { font-size: 0.78rem; }
+  .note-card .label .beats { font-size: 0.66rem; }
+}
+
 main {
   padding: 20px 24px;
 }
