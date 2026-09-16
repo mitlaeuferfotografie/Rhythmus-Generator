@@ -25,7 +25,9 @@ html, body {
   font-family: "Segoe UI", Verdana, Arial, sans-serif;
   -webkit-user-select: none;
   user-select: none;
-  touch-action: none;
+  /* touch-action:none bewusst NICHT hier (würde jedes Scrollen auf der
+     ganzen Seite per Touch blockieren) - nur die einzelnen ziehbaren
+     Karten (.note-card, .placed-note, ...) bekommen es weiter unten. */
 }
 
 h1, h2, h3 { margin: 0; }
