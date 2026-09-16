@@ -32,18 +32,13 @@ html, body {
 
 h1, h2, h3 { margin: 0; }
 
-/* Toolbar + Notenwerte-Palette bleiben als eine Einheit oben angepinnt,
-   damit beim Scrollen durch viele Takte immer Werkzeuge UND Notenwerte
-   erreichbar bleiben, ohne dass ihre Höhen einzeln synchronisiert werden
-   müssen. */
-.top-bar {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-}
-
 /* ---------- Toolbar ---------- */
 
+/* Nur die kleine Werkzeugleiste bleibt oben angepinnt (nicht mehr die
+   ganze, auf Mobilgeräten sehr hohe Notenwerte-Palette zusammen mit ihr
+   in einem gemeinsamen sticky-Block) - ein sehr hohes sticky-Element hat
+   auf manchen mobilen Browsern dazu geführt, dass der Inhalt darunter
+   (die Takte) nach dem Scrollen gar nicht mehr angezeigt wurde. */
 .toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -52,6 +47,9 @@ h1, h2, h3 { margin: 0; }
   padding: 14px 24px;
   background: var(--ink);
   color: var(--paper);
+  position: sticky;
+  top: 0;
+  z-index: 20;
 }
 
 .toolbar h1 {
