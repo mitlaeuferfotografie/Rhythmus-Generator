@@ -5,8 +5,18 @@
    Einheit: 1 "unit" = eine Achtelnote. Ein 4/4-Takt = 8 units.
    ============================================================ */
 
-const SLOT_W = 64; // px pro Achtel-Einheit, muss zu --slot-w in style.css passen
 const UNITS_PER_MEASURE = 8;
+
+// Alle Breiten werden in % der Takt-Breite gerechnet (nicht in fixen px) -
+// dadurch passt sich die Tafel jeder Bildschirmgröße an, ohne dass ein
+// Takt, der eigentlich passt, einen horizontalen Scrollbalken braucht.
+const unitsToPercent = (units) => (units / UNITS_PER_MEASURE) * 100;
+
+// Notenkopf-Position (% der EIGENEN Notenbreite), sodass er immer exakt in
+// der Mitte der ERSTEN Achtel-Einheit seiner Dauer landet - unabhängig von
+// der Gesamtbreite der Note. -17px ist ein fester, an der Icon-Grafik
+// empirisch ausgemessener Korrekturwert (Icon-Größe bleibt bewusst fix).
+const anchorPercent = (units) => 50 / units;
 
 // Jede Note wird per CSS (.placed-note .icon) an einer festen Position
 // verankert, NICHT in der Mitte ihrer gesamten Dauer-Fläche: der Notenkopf
@@ -197,7 +207,6 @@ function renderMeasure(measure, index) {
 
   const track = document.createElement('div');
   track.className = 'slot-track';
-  track.style.minWidth = `${UNITS_PER_MEASURE * SLOT_W}px`;
   track.dataset.measureId = measure.id;
 
   // Schlag-Trennlinien (nach jeder Viertel) + Taktende-Markierung
@@ -207,7 +216,7 @@ function renderMeasure(measure, index) {
     tick.style.position = 'absolute';
     tick.style.top = '0';
     tick.style.bottom = '0';
-    tick.style.left = `${unitPos * SLOT_W}px`;
+    tick.style.left = `${unitsToPercent(unitPos)}%`;
     tick.style.width = unitPos === UNITS_PER_MEASURE ? '3px' : '1px';
     tick.style.background = unitPos === UNITS_PER_MEASURE ? '#8a8a8a' : '#dedad0';
     tick.style.pointerEvents = 'none';
@@ -218,7 +227,6 @@ function renderMeasure(measure, index) {
 
   const beatLabels = document.createElement('div');
   beatLabels.className = 'beat-labels';
-  beatLabels.style.width = `${UNITS_PER_MEASURE * SLOT_W}px`;
   beatLabels.innerHTML = ['1', '+', '2', '+', '3', '+', '4', '+']
     .map((l) => `<span>${l}</span>`)
     .join('');
@@ -276,11 +284,13 @@ function attachNoteInteractions(el, noteId) {
 }
 
 function renderPlacedNote(note, type) {
+  const pct = unitsToPercent(type.units);
   const el = document.createElement('div');
   el.className = 'placed-note';
   el.dataset.noteId = note.id;
-  el.style.width = `${type.units * SLOT_W}px`;
-  el.style.flex = `0 0 ${type.units * SLOT_W}px`;
+  el.style.width = `${pct}%`;
+  el.style.flex = `0 0 ${pct}%`;
+  el.style.setProperty('--anchor-pct', anchorPercent(type.units));
   el.innerHTML = `
     <span class="icon">${type.icon}</span>
     <button class="delete-btn" title="Entfernen">×</button>
@@ -295,12 +305,12 @@ function renderPlacedNote(note, type) {
 // löschbar (eigene note-id), sitzt aber ohne eigenen Rahmen in einer
 // gemeinsamen Karte, damit es wie EIN Notenblock aussieht.
 function renderEighthPair(noteA, noteB) {
-  const width = 2 * SLOT_W;
+  const pct = unitsToPercent(2);
   const beamedIcon = noteType('quarter').icon;
   const el = document.createElement('div');
   el.className = 'placed-note-pair';
-  el.style.width = `${width}px`;
-  el.style.flex = `0 0 ${width}px`;
+  el.style.width = `${pct}%`;
+  el.style.flex = `0 0 ${pct}%`;
   el.innerHTML = `
     <div class="eighth-half" data-note-id="${noteA.id}">
       <span class="icon">${beamedIcon}</span>
@@ -363,9 +373,18 @@ function clearAll() {
    Drag & Drop (Pointer Events - funktioniert mit Maus, Touch & Stift)
    ============================================================ */
 
-let drag = null; // { kind: 'new'|'move', paletteItem?, noteId?, width, isPair, innerHtml }
+let drag = null; // { kind: 'new'|'move', paletteItem?, noteId?, units, isPair, innerHtml }
 
 const dragGhost = document.getElementById('dragGhost');
+
+// Der schwebende Cursor-Anhang ist fixed-positioniert (nicht Teil des
+// Takt-Layouts) und braucht deshalb eine echte px-Breite - gemessen an der
+// aktuell gerenderten Taktbreite, damit sie zur jeweiligen Bildschirmgröße passt.
+function currentUnitPx() {
+  const track = document.querySelector('.slot-track');
+  const width = track ? track.getBoundingClientRect().width : 320;
+  return width / UNITS_PER_MEASURE;
+}
 
 function startDragNew(e, paletteItem) {
   if (state.isPlaying) return;
@@ -373,10 +392,9 @@ function startDragNew(e, paletteItem) {
   const isPair = paletteItem.kind === 'pair';
   const type = noteType(paletteItem.typeId);
   const units = isPair ? paletteItem.units : type.units;
-  const width = units * SLOT_W;
-  const innerHtml = isPair ? pairInnerHtml() : singleInnerHtml(type.icon);
-  drag = { kind: 'new', paletteItem, width, isPair, innerHtml };
-  beginGhost(wrapHtml(innerHtml, width, isPair));
+  const innerHtml = isPair ? pairInnerHtml() : singleInnerHtml(type.icon, anchorPercent(units));
+  drag = { kind: 'new', paletteItem, units, isPair, innerHtml };
+  beginGhost(wrapHtml(innerHtml, units * currentUnitPx(), isPair));
   document.addEventListener('pointermove', onDragMove);
   document.addEventListener('pointerup', onDragEnd);
 }
@@ -387,17 +405,16 @@ function startDragMove(e, noteId) {
   const loc = findNoteLocation(noteId);
   if (!loc) return;
   const type = noteType(loc.measure.notes[loc.index].typeId);
-  const width = type.units * SLOT_W;
-  const innerHtml = singleInnerHtml(type.icon);
-  drag = { kind: 'move', noteId, width, isPair: false, innerHtml };
-  beginGhost(wrapHtml(innerHtml, width, false));
+  const innerHtml = singleInnerHtml(type.icon, anchorPercent(type.units));
+  drag = { kind: 'move', noteId, units: type.units, isPair: false, innerHtml };
+  beginGhost(wrapHtml(innerHtml, type.units * currentUnitPx(), false));
   document.querySelectorAll(`[data-note-id="${noteId}"]`).forEach((el) => el.classList.add('dragging-source'));
   document.addEventListener('pointermove', onDragMove);
   document.addEventListener('pointerup', onDragEnd);
 }
 
-function singleInnerHtml(iconSvg) {
-  return `<span class="icon">${iconSvg}</span>`;
+function singleInnerHtml(iconSvg, anchorPct) {
+  return `<span class="icon" style="--anchor-pct:${anchorPct}">${iconSvg}</span>`;
 }
 
 function pairInnerHtml() {
@@ -405,9 +422,9 @@ function pairInnerHtml() {
   return `<div class="eighth-half"><span class="icon">${beamedIcon}</span></div><div class="eighth-half"><span class="icon">${beamedIcon}</span></div><div class="beam-bar"></div>`;
 }
 
-function wrapHtml(innerHtml, width, isPair) {
+function wrapHtml(innerHtml, widthPx, isPair) {
   const cls = isPair ? 'placed-note-pair' : 'placed-note';
-  return `<div class="${cls}" style="width:${width}px;">${innerHtml}</div>`;
+  return `<div class="${cls}" style="width:${widthPx}px;">${innerHtml}</div>`;
 }
 
 function beginGhost(html) {
@@ -432,10 +449,11 @@ function onDragMove(e) {
   const excludeNoteId = drag.kind === 'move' ? drag.noteId : null;
   const { referenceEl } = computeDropIndex(track, e.clientX, excludeNoteId);
 
+  const pct = unitsToPercent(drag.units);
   const preview = document.createElement('div');
   preview.className = `insert-preview${drag.isPair ? ' insert-preview-pair' : ''}`;
-  preview.style.width = `${drag.width}px`;
-  preview.style.flex = `0 0 ${drag.width}px`;
+  preview.style.width = `${pct}%`;
+  preview.style.flex = `0 0 ${pct}%`;
   preview.innerHTML = drag.innerHtml;
 
   const insertBeforeEl = topLevelChildOf(track, referenceEl);
@@ -447,7 +465,7 @@ function onDragMove(e) {
     (sum, n) => sum + (n.id === excludeNoteId ? 0 : noteType(n.typeId).units),
     0
   );
-  const wouldBeUnits = existingUnits + drag.width / SLOT_W;
+  const wouldBeUnits = existingUnits + drag.units;
   track.closest('.measure').classList.toggle('preview-overfull', wouldBeUnits > UNITS_PER_MEASURE);
 }
 

@@ -8,9 +8,7 @@
   --ok-bg: #e6f7ea;
   --warn: #e03131;
   --warn-bg: #fde8e8;
-  --slot-w: 64px;
   --measure-gap: 18px;
-  --note-anchor: 15px; /* Icon-Position, sodass der Notenkopf exakt bei --slot-w/2 (Mitte der 1. Zählzeit-Spalte) landet */
   font-size: 20px;
 }
 
@@ -240,10 +238,9 @@ main {
   display: flex;
   align-items: center;
   min-height: 96px;
-  width: max-content;
+  width: 100%;
   border: 2px dashed var(--line);
   border-radius: 10px;
-  padding: 0 2px;
   overflow: visible;
 }
 
@@ -252,10 +249,14 @@ main {
   background-color: #eef3ff;
 }
 
+/* Gleich breiter, unsichtbarer Rahmen wie .slot-track, damit beide vom
+   selben Innenbereich (100%) ausgehen - sonst driften Notenkopf und
+   Zählzeiten-Zahl mit jeder weiteren Note leicht auseinander. */
 .beat-labels {
   display: grid;
   grid-template-columns: repeat(8, 1fr);
   margin-top: 4px;
+  border: 2px solid transparent;
   font-size: 0.75rem;
   color: #8a8a8a;
   text-align: center; /* Zahl sitzt in der Spaltenmitte - genau da, wo auch der Notenkopf verankert ist */
@@ -286,7 +287,7 @@ main {
 .placed-note .icon,
 .insert-preview .icon {
   position: absolute;
-  left: var(--note-anchor);
+  left: calc(var(--anchor-pct, 25) * 1% - 12.2px);
   top: 50%;
   transform: translateY(-50%);
   width: 28px;
@@ -330,14 +331,14 @@ main {
 
 .eighth-half {
   position: relative;
-  flex: 1 1 auto;
+  flex: 0 0 50%;
   cursor: grab;
   touch-action: none;
 }
 
 .eighth-half .icon {
   position: absolute;
-  left: var(--note-anchor);
+  left: calc(50% - 12.2px); /* jede Hälfte ist immer genau 1 Achtel-Einheit breit */
   top: 50%;
   transform: translateY(-50%);
   width: 28px;
@@ -366,13 +367,14 @@ main {
 .eighth-half .delete-btn:hover { background: var(--warn); color: white; border-color: var(--warn); }
 .eighth-half .delete-btn-left { right: auto; left: -10px; }
 
-/* Balken: verbindet die Hälse der beiden Achtel exakt (Position ergibt sich
-   direkt aus der Notenkopf-Verankerung bei 21px + Halsversatz). */
+/* Balken: verbindet die Hälse der beiden Achtel - Position/Breite relativ
+   zur Paar-Karte (die immer exakt 2 Achtel-Einheiten breit ist), damit es
+   bei jeder Bildschirmgröße exakt passt. */
 .beam-bar {
   position: absolute;
   top: calc(50% - 15px);
-  left: calc(var(--note-anchor) + 18px);
-  width: var(--slot-w);
+  left: calc(25% + 5.8px);
+  width: 50%;
   height: 6px;
   background: var(--ink);
   pointer-events: none;
