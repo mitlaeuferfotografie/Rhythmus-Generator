@@ -664,7 +664,12 @@ function play() {
     }
   }
 
-  const totalMs = totalUnits * unitSeconds * 1000 + 200;
+  // Bis zum geplanten Ende in echten (Wanduhr-)Millisekunden, ausgehend von
+  // audioCtx.currentTime JETZT (nicht von der Annahme, dass "jetzt" und der
+  // Anfangs-Vorlauf startAt exakt zusammenfallen) + großzügiger Nachlauf,
+  // damit die letzte Note/der letzte Klick nie vorzeitig abgeschnitten wird.
+  const remainingSeconds = startAt - audioCtx.currentTime + totalUnits * unitSeconds;
+  const totalMs = remainingSeconds * 1000 + 400;
   activeTimeouts.push(setTimeout(() => stop(), totalMs));
 
   startCursor(measureSegments, noteSegments, unitSeconds, startAt);
