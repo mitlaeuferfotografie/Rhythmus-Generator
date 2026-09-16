@@ -6,7 +6,12 @@ gelegten Rhythmus optional hörbar abspielen.
 
 Passend zur Unterrichtsreihe "Rhythmusnotationen 3/4" – die Notenwerte
 entsprechen den physischen Ausschneidekarten und der Notenwerte-Übersicht:
-Ganze Note, Halbe Note, Viertel Note, Achtelpaar, Viertelpause.
+Ganze Note, Halbe Note, Viertel Note, Achtel (einzeln oder als Achtelpaar),
+Viertelpause. Zwei benachbarte Achtel, die auf derselben Zählzeit beginnen,
+werden automatisch mit einem gemeinsamen Notenbalken dargestellt – exakt wie
+auf der Notenwerte-Übersicht: die erste Achtel liegt über der Zählzeit
+("1", "2", …), die zweite über dem "+". Flächenmäßig ergeben 2 Achtel immer
+exakt eine Viertelnote.
 
 ## Nutzung
 
@@ -19,9 +24,11 @@ Ganze Note, Halbe Note, Viertel Note, Achtelpaar, Viertelpause.
   und rot ("Übervoll"), sobald mehr als 4 Zählzeiten belegt sind – die
   überzählige Note ragt dabei sichtbar über die Taktgrenze hinaus.
 - "Abspielen" spielt alle Takte der Reihe nach in der eingestellten
-  Geschwindigkeit (Tempo-Regler) ab; Noten klingen für ihre volle Dauer,
-  Pausen bleiben still. "Grundschlag" blendet einen leisen Klick auf jeder
-  Zählzeit ein/aus.
+  Geschwindigkeit (Tempo-Regler) ab; jede Note (auch jede einzelne Achtel)
+  klingt für ihre eigene, korrekte Dauer, Pausen bleiben still. "Grundschlag"
+  blendet einen leisen Klick auf jeder Zählzeit ein/aus. "Wiederholungen"
+  legt fest, wie oft der komplette Rhythmus hintereinander abgespielt wird
+  (Standard: 4, frei einstellbar von 1 bis 50).
 
 Funktioniert mit Maus, Finger (Touch) und Stift – gedacht für den Einsatz auf
 einem interaktiven Whiteboard/Tafel.

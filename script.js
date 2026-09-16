@@ -31,11 +31,12 @@ const NOTE_TYPES = [
     icon: `<svg viewBox="0 0 40 48"><ellipse cx="16" cy="36" rx="11" ry="7.5" transform="rotate(-15 16 36)" fill="#1a1a1a" stroke="#1a1a1a" stroke-width="3.5"/><line x1="26" y1="33" x2="26" y2="6" stroke="#1a1a1a" stroke-width="3.5"/></svg>`,
   },
   {
-    id: 'eighthPair',
-    name: 'Achtelpaar',
-    units: 2,
+    id: 'eighth',
+    name: 'Achtel (einzeln)',
+    units: 1,
     isRest: false,
-    icon: `<svg viewBox="0 0 56 48"><ellipse cx="12" cy="36" rx="10" ry="7" transform="rotate(-15 12 36)" fill="#1a1a1a"/><ellipse cx="44" cy="36" rx="10" ry="7" transform="rotate(-15 44 36)" fill="#1a1a1a"/><line x1="21" y1="33" x2="21" y2="8" stroke="#1a1a1a" stroke-width="3.5"/><line x1="53" y1="33" x2="53" y2="8" stroke="#1a1a1a" stroke-width="3.5"/><rect x="21" y="6" width="32" height="6" fill="#1a1a1a"/></svg>`,
+    // Einzelne, unverbundene Achtel bekommt ein Fähnchen (Standard-Notation).
+    icon: `<svg viewBox="0 0 40 48"><ellipse cx="16" cy="36" rx="11" ry="7.5" transform="rotate(-15 16 36)" fill="#1a1a1a" stroke="#1a1a1a" stroke-width="3.5"/><line x1="26" y1="33" x2="26" y2="6" stroke="#1a1a1a" stroke-width="3.5"/><path d="M26 6 C34 9 35 17 27 21" fill="none" stroke="#1a1a1a" stroke-width="3.5" stroke-linecap="round"/></svg>`,
   },
   {
     id: 'quarterRest',
@@ -46,7 +47,34 @@ const NOTE_TYPES = [
   },
 ];
 
+// Fläche/Grafik für zwei benachbarte, durch einen Balken verbundene Achtel.
+// viewBox-Breite 80 wird per preserveAspectRatio="none" exakt auf die Breite
+// von 2 Einheiten gestreckt -> Notenkopf 1 liegt exakt bei 25% (= Mitte der
+// ersten Achtel-Einheit, unter Zählzeit "1"), Notenkopf 2 exakt bei 75%
+// (= Mitte der zweiten Einheit, unter "+"). So ergeben 2 Achtel exakt die
+// gleiche Fläche wie eine Viertelnote.
+const EIGHTH_PAIR_SVG = `<svg viewBox="0 0 80 48" preserveAspectRatio="none">
+  <ellipse cx="20" cy="36" rx="10" ry="7" transform="rotate(-15 20 36)" fill="#1a1a1a"/>
+  <ellipse cx="60" cy="36" rx="10" ry="7" transform="rotate(-15 60 36)" fill="#1a1a1a"/>
+  <line x1="29" y1="33" x2="29" y2="6" stroke="#1a1a1a" stroke-width="3.5"/>
+  <line x1="69" y1="33" x2="69" y2="6" stroke="#1a1a1a" stroke-width="3.5"/>
+  <rect x="29" y="4" width="40" height="6" fill="#1a1a1a"/>
+</svg>`;
+
 const noteType = (id) => NOTE_TYPES.find((t) => t.id === id);
+
+// Palette: die meisten Karten erzeugen 1 Note; "Achtelpaar" ist eine
+// Komfort-Karte, die 2 einzelne Achtel-Noten gleichzeitig einfügt (passend
+// zu den physischen "Notenblöcken"). Nach dem Einfügen sind es zwei völlig
+// unabhängige Noten - Balken werden beim Rendern automatisch erkannt.
+const PALETTE_ITEMS = [
+  { kind: 'single', typeId: 'whole' },
+  { kind: 'single', typeId: 'half' },
+  { kind: 'single', typeId: 'quarter' },
+  { kind: 'pair', typeId: 'eighth', name: 'Achtelpaar', units: 2 },
+  { kind: 'single', typeId: 'eighth' },
+  { kind: 'single', typeId: 'quarterRest' },
+];
 
 /* ============================================================
    State
@@ -78,6 +106,23 @@ function measureStatus(measure) {
   return 'uebervoll';
 }
 
+// Reihenfolge + Startposition (in Achtel-Einheiten) jeder Note im Takt -
+// wird gebraucht, um benachbarte Achtel zu einem Balkenpaar zu gruppieren.
+function layoutNotes(measure) {
+  let cursor = 0;
+  return measure.notes.map((note) => {
+    const type = noteType(note.typeId);
+    const entry = { note, type, start: cursor };
+    cursor += type.units;
+    return entry;
+  });
+}
+
+function formatBeats(units) {
+  const beats = units / 2;
+  return Number.isInteger(beats) ? String(beats) : beats.toFixed(1);
+}
+
 /* ============================================================
    Rendering: Palette
    ============================================================ */
@@ -86,19 +131,24 @@ const paletteCardsEl = document.getElementById('paletteCards');
 
 function renderPalette() {
   paletteCardsEl.innerHTML = '';
-  NOTE_TYPES.forEach((type) => {
+  PALETTE_ITEMS.forEach((item) => {
+    const type = noteType(item.typeId);
+    const isPair = item.kind === 'pair';
+    const units = isPair ? item.units : type.units;
+    const name = isPair ? item.name : type.name;
+    const icon = isPair ? EIGHTH_PAIR_SVG : type.icon;
+    const beatsLabel = formatBeats(units);
+
     const card = document.createElement('div');
     card.className = 'note-card';
-    card.dataset.typeId = type.id;
-    const beats = type.units / 2;
     card.innerHTML = `
-      <span class="icon">${type.icon}</span>
+      <span class="icon">${icon}</span>
       <span class="label">
-        <span class="name">${type.name}</span>
-        <span class="beats">${beats} Zählzeit${beats === 1 ? '' : 'en'}</span>
+        <span class="name">${name}</span>
+        <span class="beats">${beatsLabel} Zählzeit${beatsLabel === '1' ? '' : 'en'}</span>
       </span>
     `;
-    card.addEventListener('pointerdown', (e) => startDragNew(e, type.id));
+    card.addEventListener('pointerdown', (e) => startDragNew(e, item));
     paletteCardsEl.appendChild(card);
   });
 }
@@ -119,7 +169,7 @@ function renderMeasures() {
 function renderMeasure(measure, index) {
   const status = measureStatus(measure);
   const units = measureUnits(measure);
-  const beats = units / 2;
+  const beats = formatBeats(units);
 
   const wrap = document.createElement('div');
   wrap.className = `measure status-${status}`;
@@ -163,9 +213,7 @@ function renderMeasure(measure, index) {
     track.appendChild(tick);
   });
 
-  measure.notes.forEach((note) => {
-    track.appendChild(renderPlacedNote(note));
-  });
+  renderMeasureNotes(track, measure);
 
   const beatLabels = document.createElement('div');
   beatLabels.className = 'beat-labels';
@@ -186,8 +234,47 @@ function renderMeasure(measure, index) {
   return wrap;
 }
 
-function renderPlacedNote(note) {
-  const type = noteType(note.typeId);
+// Zwei benachbarte einzelne Achtel, die exakt auf einer Zählzeit beginnen
+// (z. B. Position 0+1, 2+3, 4+5, 6+7), werden als verbundenes Paar mit
+// gemeinsamem Balken dargestellt - unabhängig davon, ob sie über die
+// "Achtelpaar"-Karte oder einzeln als "Achtel" hineingezogen wurden.
+function renderMeasureNotes(track, measure) {
+  const layout = layoutNotes(measure);
+  let i = 0;
+  while (i < layout.length) {
+    const cur = layout[i];
+    const next = layout[i + 1];
+    const canPair =
+      cur.type.id === 'eighth' &&
+      next &&
+      next.type.id === 'eighth' &&
+      cur.start % 2 === 0 &&
+      next.start === cur.start + 1;
+
+    if (canPair) {
+      track.appendChild(renderEighthPair(cur.note, next.note));
+      i += 2;
+    } else {
+      track.appendChild(renderPlacedNote(cur.note, cur.type));
+      i += 1;
+    }
+  }
+}
+
+function attachNoteInteractions(el, noteId) {
+  const deleteBtn = el.querySelector('.delete-btn');
+  deleteBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
+  deleteBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    deleteNote(noteId);
+  });
+  el.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('.delete-btn')) return;
+    startDragMove(e, noteId);
+  });
+}
+
+function renderPlacedNote(note, type) {
   const el = document.createElement('div');
   el.className = 'placed-note';
   el.dataset.noteId = note.id;
@@ -197,16 +284,27 @@ function renderPlacedNote(note) {
     <span class="icon">${type.icon}</span>
     <button class="delete-btn" title="Entfernen">×</button>
   `;
-  el.querySelector('.delete-btn').addEventListener('pointerdown', (e) => {
-    e.stopPropagation();
-  });
-  el.querySelector('.delete-btn').addEventListener('click', (e) => {
-    e.stopPropagation();
-    deleteNote(note.id);
-  });
-  el.addEventListener('pointerdown', (e) => {
-    if (e.target.closest('.delete-btn')) return;
-    startDragMove(e, note.id);
+  attachNoteInteractions(el, note.id);
+  return el;
+}
+
+function renderEighthPair(noteA, noteB) {
+  const width = 2 * SLOT_W;
+  const el = document.createElement('div');
+  el.className = 'placed-note eighth-pair-visual';
+  el.style.width = `${width}px`;
+  el.style.flex = `0 0 ${width}px`;
+  el.innerHTML = `
+    <span class="icon icon-pair">${EIGHTH_PAIR_SVG}</span>
+    <div class="eighth-hit left" data-note-id="${noteA.id}">
+      <button class="delete-btn" title="Entfernen">×</button>
+    </div>
+    <div class="eighth-hit right" data-note-id="${noteB.id}">
+      <button class="delete-btn" title="Entfernen">×</button>
+    </div>
+  `;
+  el.querySelectorAll('.eighth-hit').forEach((hit) => {
+    attachNoteInteractions(hit, hit.dataset.noteId);
   });
   return el;
 }
@@ -256,16 +354,19 @@ function clearAll() {
    Drag & Drop (Pointer Events - funktioniert mit Maus, Touch & Stift)
    ============================================================ */
 
-let drag = null; // { kind: 'new'|'move', typeId?, noteId?, ghostEl, width }
+let drag = null; // { kind: 'new'|'move', paletteItem?, noteId?, width }
 
 const dragGhost = document.getElementById('dragGhost');
 
-function startDragNew(e, typeId) {
+function startDragNew(e, paletteItem) {
   if (state.isPlaying) return;
   e.preventDefault();
-  const type = noteType(typeId);
-  drag = { kind: 'new', typeId, width: type.units * SLOT_W };
-  beginGhost(type.icon, drag.width);
+  const isPair = paletteItem.kind === 'pair';
+  const type = noteType(paletteItem.typeId);
+  const units = isPair ? paletteItem.units : type.units;
+  const icon = isPair ? EIGHTH_PAIR_SVG : type.icon;
+  drag = { kind: 'new', paletteItem, width: units * SLOT_W };
+  beginGhost(icon, drag.width);
   document.addEventListener('pointermove', onDragMove);
   document.addEventListener('pointerup', onDragEnd);
 }
@@ -314,7 +415,12 @@ function onDragEnd(e) {
     const { index } = computeDropIndex(track, e.clientX, drag.kind === 'move' ? drag.noteId : null);
 
     if (drag.kind === 'new') {
-      insertNote(measureId, index, { id: uid('n'), typeId: drag.typeId });
+      if (drag.paletteItem.kind === 'pair') {
+        insertNote(measureId, index, { id: uid('n'), typeId: 'eighth' });
+        insertNote(measureId, index + 1, { id: uid('n'), typeId: 'eighth' });
+      } else {
+        insertNote(measureId, index, { id: uid('n'), typeId: drag.paletteItem.typeId });
+      }
     } else if (drag.kind === 'move') {
       const loc = findNoteLocation(drag.noteId);
       if (loc) {
@@ -431,6 +537,20 @@ function scheduleClick(startTime) {
   activeOscillators.push(osc);
 }
 
+function schedulePlayheadHighlight(noteId, startTime, duration) {
+  const delayMs = (startTime - audioCtx.currentTime) * 1000;
+  activeTimeouts.push(
+    setTimeout(() => {
+      document.querySelectorAll(`[data-note-id="${noteId}"]`).forEach((el) => el.classList.add('playing'));
+    }, Math.max(0, delayMs))
+  );
+  activeTimeouts.push(
+    setTimeout(() => {
+      document.querySelectorAll(`[data-note-id="${noteId}"]`).forEach((el) => el.classList.remove('playing'));
+    }, Math.max(0, delayMs + duration * 1000))
+  );
+}
+
 function play() {
   if (state.isPlaying) return;
   ensureAudioContext();
@@ -441,39 +561,35 @@ function play() {
   const secondsPerBeat = 60 / state.bpm;
   const unitSeconds = secondsPerBeat / 2;
   const startAt = audioCtx.currentTime + 0.15;
+  const repeatCount = Math.max(1, Math.min(50, Math.round(Number(repeatInput.value)) || 1));
+
   let cursorUnits = 0;
-  let totalUnits = 0;
 
-  state.measures.forEach((measure) => {
-    measure.notes.forEach((note) => {
-      const type = noteType(note.typeId);
-      const noteStart = startAt + cursorUnits * unitSeconds;
-      const noteDuration = type.units * unitSeconds;
+  for (let rep = 0; rep < repeatCount; rep++) {
+    state.measures.forEach((measure) => {
+      const measureStartUnits = cursorUnits;
 
-      if (!type.isRest) {
-        scheduleTone(noteStart, noteDuration * 0.92, 523.25);
+      measure.notes.forEach((note) => {
+        const type = noteType(note.typeId);
+        const noteStart = startAt + cursorUnits * unitSeconds;
+        const noteDuration = type.units * unitSeconds;
+
+        if (!type.isRest) {
+          scheduleTone(noteStart, noteDuration * 0.92, 523.25);
+        }
+        schedulePlayheadHighlight(note.id, noteStart, noteDuration);
+
+        cursorUnits += type.units;
+      });
+
+      const measureUsedUnits = cursorUnits - measureStartUnits;
+      if (measureUsedUnits < UNITS_PER_MEASURE) {
+        cursorUnits = measureStartUnits + UNITS_PER_MEASURE;
       }
-
-      const noteId = note.id;
-      const delayMs = (noteStart - audioCtx.currentTime) * 1000;
-      activeTimeouts.push(
-        setTimeout(() => {
-          const el = document.querySelector(`.placed-note[data-note-id="${noteId}"]`);
-          if (el) el.classList.add('playing');
-        }, Math.max(0, delayMs))
-      );
-      activeTimeouts.push(
-        setTimeout(() => {
-          const el = document.querySelector(`.placed-note[data-note-id="${noteId}"]`);
-          if (el) el.classList.remove('playing');
-        }, Math.max(0, delayMs + noteDuration * 1000))
-      );
-
-      cursorUnits += type.units;
     });
-    totalUnits += Math.max(measureUnits(measure), UNITS_PER_MEASURE);
-    cursorUnits = totalUnits;
-  });
+  }
+
+  const totalUnits = cursorUnits;
 
   if (state.metronome) {
     for (let u = 0; u < totalUnits; u += 2) {
@@ -496,7 +612,7 @@ function stop() {
   activeOscillators = [];
   activeTimeouts.forEach((t) => clearTimeout(t));
   activeTimeouts = [];
-  document.querySelectorAll('.placed-note.playing').forEach((el) => el.classList.remove('playing'));
+  document.querySelectorAll('.playing').forEach((el) => el.classList.remove('playing'));
   state.isPlaying = false;
   playBtn.disabled = false;
   stopBtn.disabled = true;
@@ -511,6 +627,7 @@ const stopBtn = document.getElementById('stopBtn');
 const bpmSlider = document.getElementById('bpmSlider');
 const bpmValue = document.getElementById('bpmValue');
 const metronomeToggle = document.getElementById('metronomeToggle');
+const repeatInput = document.getElementById('repeatInput');
 
 document.getElementById('addMeasureBtn').addEventListener('click', addMeasure);
 document.getElementById('clearBtn').addEventListener('click', clearAll);
@@ -522,6 +639,9 @@ bpmSlider.addEventListener('input', () => {
 });
 metronomeToggle.addEventListener('change', () => {
   state.metronome = metronomeToggle.checked;
+});
+repeatInput.addEventListener('change', () => {
+  repeatInput.value = Math.max(1, Math.min(50, Math.round(Number(repeatInput.value)) || 1));
 });
 
 /* ============================================================
