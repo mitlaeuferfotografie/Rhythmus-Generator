@@ -225,6 +225,10 @@ function renderMeasure(measure, index) {
 
   renderMeasureNotes(track, measure);
 
+  const playhead = document.createElement('div');
+  playhead.className = 'playhead';
+  track.appendChild(playhead);
+
   const beatLabels = document.createElement('div');
   beatLabels.className = 'beat-labels';
   beatLabels.innerHTML = ['1', '+', '2', '+', '3', '+', '4', '+']
@@ -638,10 +642,12 @@ function play() {
   const repeatCount = Math.max(1, Math.min(50, Math.round(Number(repeatInput.value)) || 1));
 
   let cursorUnits = 0;
+  const measureSegments = []; // { measureId, startUnit } - für den laufenden Cursor
 
   for (let rep = 0; rep < repeatCount; rep++) {
     state.measures.forEach((measure) => {
       const measureStartUnits = cursorUnits;
+      measureSegments.push({ measureId: measure.id, startUnit: measureStartUnits });
 
       measure.notes.forEach((note) => {
         const type = noteType(note.typeId);
@@ -673,6 +679,46 @@ function play() {
 
   const totalMs = totalUnits * unitSeconds * 1000 + 200;
   activeTimeouts.push(setTimeout(() => stop(), totalMs));
+
+  startCursor(measureSegments, unitSeconds, startAt);
+}
+
+// Laufender Zeigebalken: läuft synchron zum Tempo durch den jeweils
+// aktiven Takt, damit die Kinder genau sehen, WANN eine Note gespielt
+// werden muss (nicht nur, dass sie gerade dran ist).
+let cursorRAF = null;
+
+function startCursor(segments, unitSeconds, startAt) {
+  function tick() {
+    if (!state.isPlaying) return;
+    const elapsedUnits = (audioCtx.currentTime - startAt) / unitSeconds;
+
+    document.querySelectorAll('.playhead.active').forEach((p) => p.classList.remove('active'));
+
+    if (elapsedUnits >= 0) {
+      const segment = segments.find(
+        (s) => elapsedUnits >= s.startUnit && elapsedUnits < s.startUnit + UNITS_PER_MEASURE
+      );
+      if (segment) {
+        const track = document.querySelector(`.slot-track[data-measure-id="${segment.measureId}"]`);
+        const playhead = track && track.querySelector('.playhead');
+        if (playhead) {
+          const pct = ((elapsedUnits - segment.startUnit) / UNITS_PER_MEASURE) * 100;
+          playhead.style.left = `${Math.max(0, Math.min(100, pct))}%`;
+          playhead.classList.add('active');
+        }
+      }
+    }
+
+    cursorRAF = requestAnimationFrame(tick);
+  }
+  cursorRAF = requestAnimationFrame(tick);
+}
+
+function stopCursor() {
+  if (cursorRAF) cancelAnimationFrame(cursorRAF);
+  cursorRAF = null;
+  document.querySelectorAll('.playhead.active').forEach((p) => p.classList.remove('active'));
 }
 
 function stop() {
@@ -687,6 +733,7 @@ function stop() {
   activeTimeouts.forEach((t) => clearTimeout(t));
   activeTimeouts = [];
   document.querySelectorAll('.playing').forEach((el) => el.classList.remove('playing'));
+  stopCursor();
   state.isPlaying = false;
   playBtn.disabled = false;
   stopBtn.disabled = true;

@@ -257,6 +257,24 @@ main {
   background-color: #eef3ff;
 }
 
+/* Laufender Zeigebalken beim Abspielen - läuft synchron zum Tempo über den
+   Takt, damit sichtbar ist, WANN genau eine Note gespielt werden muss. */
+.playhead {
+  position: absolute;
+  top: -6px;
+  bottom: -6px;
+  left: 0;
+  width: 4px;
+  margin-left: -2px;
+  background: var(--accent);
+  border-radius: 2px;
+  box-shadow: 0 0 8px rgba(47, 111, 237, 0.7);
+  pointer-events: none;
+  z-index: 6;
+  display: none;
+}
+.playhead.active { display: block; }
+
 /* Gleich breiter, unsichtbarer Rahmen wie .slot-track, damit beide vom
    selben Innenbereich (100%) ausgehen - sonst driften Notenkopf und
    Zählzeiten-Zahl mit jeder weiteren Note leicht auseinander. */
