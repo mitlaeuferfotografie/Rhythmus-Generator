@@ -51,7 +51,10 @@ const NOTE_TYPES = [
     units: 1,
     isRest: false,
     // Einzelne, unverbundene Achtel bekommt ein Fähnchen (Standard-Notation).
-    icon: `<svg viewBox="0 0 40 48"><ellipse cx="16" cy="36" rx="11" ry="7.5" transform="rotate(-15 16 36)" fill="#1a1a1a" stroke="#1a1a1a" stroke-width="3.5"/><line x1="26" y1="33" x2="26" y2="6" stroke="#1a1a1a" stroke-width="3.5"/><path d="M26 6 C34 9 35 17 27 21" fill="none" stroke="#1a1a1a" stroke-width="3.5" stroke-linecap="round"/></svg>`,
+    // Als geschlossene, gefüllte Fläche gezeichnet (nicht nur ein Strich),
+    // die sich deutlich vom Notenhals löst - sonst verschmilzt sie optisch
+    // mit dem Hals und ist kaum als eigenes Fähnchen erkennbar.
+    icon: `<svg viewBox="0 0 40 48"><ellipse cx="16" cy="36" rx="11" ry="7.5" transform="rotate(-15 16 36)" fill="#1a1a1a" stroke="#1a1a1a" stroke-width="3.5"/><line x1="26" y1="33" x2="26" y2="6" stroke="#1a1a1a" stroke-width="3.5"/><path d="M26 6 C34 8 37 15 32 21 C30.5 23 29 21.5 29 19 C31 16 30 11 26 9 Z" fill="#1a1a1a"/></svg>`,
   },
   {
     id: 'quarterRest',
