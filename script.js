@@ -615,20 +615,6 @@ function scheduleClick(startTime) {
   activeOscillators.push(osc);
 }
 
-function schedulePlayheadHighlight(noteId, startTime, duration) {
-  const delayMs = (startTime - audioCtx.currentTime) * 1000;
-  activeTimeouts.push(
-    setTimeout(() => {
-      document.querySelectorAll(`[data-note-id="${noteId}"]`).forEach((el) => el.classList.add('playing'));
-    }, Math.max(0, delayMs))
-  );
-  activeTimeouts.push(
-    setTimeout(() => {
-      document.querySelectorAll(`[data-note-id="${noteId}"]`).forEach((el) => el.classList.remove('playing'));
-    }, Math.max(0, delayMs + duration * 1000))
-  );
-}
-
 function play() {
   if (state.isPlaying) return;
   ensureAudioContext();
@@ -643,6 +629,7 @@ function play() {
 
   let cursorUnits = 0;
   const measureSegments = []; // { measureId, startUnit } - für den laufenden Cursor
+  const noteSegments = []; // { noteId, startUnit, endUnit } - für die Hervorhebung
 
   for (let rep = 0; rep < repeatCount; rep++) {
     state.measures.forEach((measure) => {
@@ -657,7 +644,7 @@ function play() {
         if (!type.isRest) {
           scheduleTone(noteStart, noteDuration * 0.92, 523.25);
         }
-        schedulePlayheadHighlight(note.id, noteStart, noteDuration);
+        noteSegments.push({ noteId: note.id, startUnit: cursorUnits, endUnit: cursorUnits + type.units });
 
         cursorUnits += type.units;
       });
@@ -680,15 +667,17 @@ function play() {
   const totalMs = totalUnits * unitSeconds * 1000 + 200;
   activeTimeouts.push(setTimeout(() => stop(), totalMs));
 
-  startCursor(measureSegments, unitSeconds, startAt);
+  startCursor(measureSegments, noteSegments, unitSeconds, startAt);
 }
 
-// Laufender Zeigebalken: läuft synchron zum Tempo durch den jeweils
-// aktiven Takt, damit die Kinder genau sehen, WANN eine Note gespielt
-// werden muss (nicht nur, dass sie gerade dran ist).
+// Laufender Zeigebalken UND Noten-Hervorhebung laufen über dieselbe Uhr
+// (audioCtx.currentTime, nicht die System-/setTimeout-Uhr) - sonst laufen
+// beide mit der Zeit leicht gegeneinander (und gegen den tatsächlichen Ton)
+// auseinander, weil setTimeout-Verzögerungen nicht exakt sample-genau sind.
 let cursorRAF = null;
+let highlightedNoteIds = new Set();
 
-function startCursor(segments, unitSeconds, startAt) {
+function startCursor(measureSegments, noteSegments, unitSeconds, startAt) {
   function tick() {
     if (!state.isPlaying) return;
     const elapsedUnits = (audioCtx.currentTime - startAt) / unitSeconds;
@@ -696,7 +685,7 @@ function startCursor(segments, unitSeconds, startAt) {
     document.querySelectorAll('.playhead.active').forEach((p) => p.classList.remove('active'));
 
     if (elapsedUnits >= 0) {
-      const segment = segments.find(
+      const segment = measureSegments.find(
         (s) => elapsedUnits >= s.startUnit && elapsedUnits < s.startUnit + UNITS_PER_MEASURE
       );
       if (segment) {
@@ -710,6 +699,24 @@ function startCursor(segments, unitSeconds, startAt) {
       }
     }
 
+    const activeIds = new Set();
+    if (elapsedUnits >= 0) {
+      noteSegments.forEach((seg) => {
+        if (elapsedUnits >= seg.startUnit && elapsedUnits < seg.endUnit) activeIds.add(seg.noteId);
+      });
+    }
+    highlightedNoteIds.forEach((id) => {
+      if (!activeIds.has(id)) {
+        document.querySelectorAll(`[data-note-id="${id}"]`).forEach((el) => el.classList.remove('playing'));
+      }
+    });
+    activeIds.forEach((id) => {
+      if (!highlightedNoteIds.has(id)) {
+        document.querySelectorAll(`[data-note-id="${id}"]`).forEach((el) => el.classList.add('playing'));
+      }
+    });
+    highlightedNoteIds = activeIds;
+
     cursorRAF = requestAnimationFrame(tick);
   }
   cursorRAF = requestAnimationFrame(tick);
@@ -719,6 +726,8 @@ function stopCursor() {
   if (cursorRAF) cancelAnimationFrame(cursorRAF);
   cursorRAF = null;
   document.querySelectorAll('.playhead.active').forEach((p) => p.classList.remove('active'));
+  document.querySelectorAll('.playing').forEach((el) => el.classList.remove('playing'));
+  highlightedNoteIds = new Set();
 }
 
 function stop() {
@@ -732,7 +741,6 @@ function stop() {
   activeOscillators = [];
   activeTimeouts.forEach((t) => clearTimeout(t));
   activeTimeouts = [];
-  document.querySelectorAll('.playing').forEach((el) => el.classList.remove('playing'));
   stopCursor();
   state.isPlaying = false;
   playBtn.disabled = false;
