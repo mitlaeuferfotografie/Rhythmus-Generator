@@ -77,20 +77,21 @@ const NOTE_TYPES = [
     name: 'Viertelpause',
     units: 2,
     isRest: true,
-    // Eckiger Zickzack oben + ein großer runder Bogen unten, statt
-    // gleichmäßiger Wellen - so wie das echte Notenschrift-Zeichen (mit
-    // Wikipedia-Vorlage abgeglichen: https://en.wikipedia.org/wiki/Rest_(music)).
-    icon: `<svg viewBox="0 0 40 48"><path d="M24 4 L12 14 L30 20 L10 38 C6 44 18 47 24 44" fill="none" stroke="#1a1a1a" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+    // Echte Bravura/Wikipedia-Pfaddaten (Datei "Crochet2.svg" von
+    // commons.wikimedia.org, https://en.wikipedia.org/wiki/Rest_(music)),
+    // nur per transform in unser 40x48-viewBox skaliert/verschoben - keine
+    // Nachzeichnung mehr, sondern das Original-Zeichen selbst.
+    icon: `<svg viewBox="0 0 40 48"><path d="M 33.585446,59.378537 49.000347,80.448853 C 34.510389,96.966456 43.303241,103.77053 46.891412,113.31714 L 30.195758,89.013879 c 9.651793,-11.411594 5.787047,-20.20785 2.345326,-29.067873 -0.002,-0.0045 1.042493,-0.561506 1.044362,-0.567469 z" fill="#1a1a1a" transform="translate(10,4) scale(0.564) translate(-28.293569,-59.378536)"/><path d="m 45.566519,110.60468 c -17.76994,-15.91987 -24.592214,4.82994 -7.083379,19.74003 -2.252919,-3.86658 -8.756028,-22.85814 7.953256,-17.07143" fill="#1a1a1a" transform="translate(10,4) scale(0.564) translate(-28.293569,-59.378536)"/></svg>`,
   },
   {
     id: 'eighthRest',
     name: 'Achtelpause',
     units: 1,
     isRest: true,
-    // Ein durchgehender, dünner Strich mit einer kompakten Schlaufe oben
-    // (wie ein "7" mit eingerolltem Kopf) statt einer dicken, verschmolzenen
-    // Fläche - mit der Wikipedia-Vorlage abgeglichen.
-    icon: `<svg viewBox="0 0 40 48"><path d="M25 8 C29 9 29 14 25 16 C23.5 16.8 22.5 15.5 23 14 L12 40" fill="none" stroke="#1a1a1a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+    // Echte Pfaddaten aus "Rests_on_stave_07_Quaver.svg" von
+    // commons.wikimedia.org, genauso nur skaliert/verschoben statt
+    // nachgezeichnet.
+    icon: `<svg viewBox="0 0 40 48"><path d="m 531.098,74.847 c -0.52,0.098 -0.918,0.457 -1.098,0.953 -0.039,0.16 -0.039,0.199 -0.039,0.418 0,0.301 0.019,0.461 0.16,0.699 0.199,0.399 0.617,0.719 1.094,0.836 0.5,0.141 1.336,0.02 2.293,-0.297 l 0.238,-0.082 -1.176,3.25 -1.156,3.246 c 0,0 0.039,0.02 0.102,0.063 0.117,0.078 0.316,0.137 0.457,0.137 0.238,0 0.539,-0.137 0.578,-0.258 0,-0.039 0.558,-1.934 1.234,-4.184 l 1.195,-4.125 -0.039,-0.058 c -0.097,-0.121 -0.296,-0.16 -0.418,-0.063 -0.039,0.039 -0.101,0.121 -0.14,0.18 -0.18,0.301 -0.637,0.836 -0.875,1.035 -0.219,0.18 -0.34,0.199 -0.539,0.121 -0.18,-0.098 -0.239,-0.199 -0.36,-0.738 -0.117,-0.535 -0.257,-0.778 -0.558,-0.977 -0.278,-0.179 -0.637,-0.238 -0.953,-0.156 z" fill="#1a1a1a" transform="translate(13,8) scale(2.8) translate(-529.96,-74.81)"/></svg>`,
   },
 ];
 
