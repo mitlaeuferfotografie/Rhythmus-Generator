@@ -258,7 +258,7 @@ main {
   margin-top: 4px;
   font-size: 0.75rem;
   color: #8a8a8a;
-  text-align: left;
+  text-align: center; /* Zahl sitzt in der Spaltenmitte - genau da, wo auch der Notenkopf verankert ist */
 }
 .beat-labels span:nth-child(odd) { font-weight: 600; color: #555; }
 
