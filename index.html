@@ -9,36 +9,12 @@
      Ohne Versionsnummer kann ein Browser sonst eine alte index.html mit
      einem neuen script.js mischen (oder umgekehrt) und abstürzen, wenn
      sich IDs/Struktur zwischen den Versionen geändert haben. -->
-<link rel="stylesheet" href="style.css?v=8">
+<link rel="stylesheet" href="style.css?v=9">
 </head>
 <body>
 
 <header class="toolbar">
   <h1>Rhythmus-Generator</h1>
-
-  <div class="toolbar-group">
-    <button id="addMeasureBtn" class="btn">+ Takt</button>
-    <button id="clearBtn" class="btn btn-secondary">Alles leeren</button>
-  </div>
-
-  <button id="settingsToggle" class="btn btn-secondary" aria-expanded="false" aria-controls="settingsPanel">
-    ⚙ Einstellungen
-  </button>
-
-  <div id="settingsPanel" class="settings-panel" hidden>
-    <label class="tempo-label">
-      Tempo: <span id="bpmValue">90</span> BPM
-      <input type="range" id="bpmSlider" min="40" max="180" value="90">
-    </label>
-    <label class="metronome-label">
-      <input type="checkbox" id="metronomeToggle" checked>
-      Grundschlag
-    </label>
-    <label class="repeat-label">
-      Wiederholungen:
-      <input type="number" id="repeatInput" min="1" max="50" value="4">
-    </label>
-  </div>
 </header>
 
 <section class="palette" aria-label="Notenwerte-Palette">
@@ -64,13 +40,34 @@
     <div id="measures" class="measures">
       <!-- measures populated by script.js -->
     </div>
+    <button id="addMeasureBtn" class="add-measure-btn">+ Takt</button>
   </section>
 </main>
 
-<button id="playPauseBtn" class="play-pause-btn">▶ Abspielen</button>
+<div class="bottom-bar">
+  <button id="settingsToggle" class="btn btn-secondary" aria-expanded="false" aria-controls="settingsPanel">
+    ⚙ Einstellungen
+  </button>
+  <button id="playPauseBtn" class="play-pause-btn">▶ Abspielen</button>
+
+  <div id="settingsPanel" class="settings-panel" hidden>
+    <label class="tempo-label">
+      Tempo: <span id="bpmValue">90</span> BPM
+      <input type="range" id="bpmSlider" min="40" max="180" value="90">
+    </label>
+    <label class="metronome-label">
+      <input type="checkbox" id="metronomeToggle" checked>
+      Grundschlag
+    </label>
+    <label class="repeat-label">
+      Wiederholungen:
+      <input type="number" id="repeatInput" min="1" max="50" value="4">
+    </label>
+  </div>
+</div>
 
 <div id="dragGhost" class="drag-ghost" hidden></div>
 
-<script src="script.js?v=8"></script>
+<script src="script.js?v=9"></script>
 </body>
 </html>

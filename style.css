@@ -34,17 +34,14 @@ h1, h2, h3 { margin: 0; }
 
 /* ---------- Toolbar ---------- */
 
-/* Nur die kleine Werkzeugleiste bleibt oben angepinnt (nicht mehr die
-   ganze, auf Mobilgeräten sehr hohe Notenwerte-Palette zusammen mit ihr
-   in einem gemeinsamen sticky-Block) - ein sehr hohes sticky-Element hat
-   auf manchen mobilen Browsern dazu geführt, dass der Inhalt darunter
-   (die Takte) nach dem Scrollen gar nicht mehr angezeigt wurde. */
+/* Die Werkzeugleiste zeigt nur noch den Titel - eine Zeile, egal wie
+   schmal/niedrig der Bildschirm ist (wichtig im Querformat auf dem Handy,
+   wo die Höhe knapp ist). Alle Aktionen sitzen jetzt entweder direkt beim
+   Raster ("+ Takt") oder unten bei Abspielen ("Einstellungen"). */
 .toolbar {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 20px;
-  padding: 14px 24px;
+  padding: 10px 24px;
   background: var(--ink);
   color: var(--paper);
   position: sticky;
@@ -53,16 +50,8 @@ h1, h2, h3 { margin: 0; }
 }
 
 .toolbar h1 {
-  font-size: 1.5rem;
-  margin-right: auto;
+  font-size: 1.3rem;
   white-space: nowrap;
-}
-
-.toolbar-group {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
 }
 
 .btn {
@@ -80,16 +69,37 @@ h1, h2, h3 { margin: 0; }
 
 .btn-secondary { background: #565656; }
 
-/* Ein einziger Play/Stopp-Knopf statt zwei getrennter Buttons - fest am
-   unteren Bildschirmrand statt in der Werkzeugleiste, damit oben mehr
-   Platz bleibt und der Knopf immer erreichbar ist, egal wie weit man
-   durch die Takte gescrollt hat. */
-.play-pause-btn {
+/* "+ Takt" sitzt direkt unter der Taktliste (nicht mehr oben in der
+   Werkzeugleiste) - ein Klick fügt den neuen Takt genau dort ein, wo man
+   grade hinschaut, statt dass man erst nach oben scrollen müsste. */
+.add-measure-btn {
+  align-self: flex-start;
+  margin-top: 4px;
+  font-size: 1.05rem;
+  padding: 12px 24px;
+  border: 2px dashed var(--line);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  min-height: 48px;
+}
+
+/* Einstellungen + Abspielen bleiben als Einheit fest unten am Bildschirm,
+   damit beide immer erreichbar sind, egal wie weit man durch die Takte
+   gescrollt hat, und ohne oben Platz zu brauchen. */
+.bottom-bar {
   position: fixed;
   left: 50%;
   bottom: 20px;
   transform: translateX(-50%);
   z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.play-pause-btn {
   padding: 16px 36px;
   border: none;
   border-radius: 999px;
@@ -105,6 +115,11 @@ h1, h2, h3 { margin: 0; }
 
 .play-pause-btn.is-playing {
   background: var(--warn);
+}
+
+.bottom-bar .btn-secondary {
+  border-radius: 999px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
 }
 
 .tempo-label, .metronome-label {
@@ -145,9 +160,9 @@ h1, h2, h3 { margin: 0; }
    statt bei jedem Umbruch höher zu werden und den Rest zu verdecken. */
 .settings-panel {
   position: absolute;
-  top: 100%;
-  right: 24px;
-  margin-top: 6px;
+  bottom: 100%;
+  left: 0;
+  margin-bottom: 10px;
   background: var(--paper);
   color: var(--ink);
   border-radius: 12px;
@@ -275,6 +290,9 @@ main {
 
 .score {
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--measure-gap);
 }
 
 .measures {

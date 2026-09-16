@@ -406,11 +406,6 @@ function removeMeasure(measureId) {
   renderMeasures();
 }
 
-function clearAll() {
-  state.measures = [newMeasure()];
-  renderMeasures();
-}
-
 /* ============================================================
    Drag & Drop (Pointer Events - funktioniert mit Maus, Touch & Stift)
    ============================================================ */
@@ -850,7 +845,6 @@ const metronomeToggle = document.getElementById('metronomeToggle');
 const repeatInput = document.getElementById('repeatInput');
 
 document.getElementById('addMeasureBtn').addEventListener('click', addMeasure);
-document.getElementById('clearBtn').addEventListener('click', clearAll);
 playPauseBtn.addEventListener('click', () => {
   if (state.isPlaying) stop();
   else play();
