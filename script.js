@@ -363,7 +363,7 @@ function clearAll() {
    Drag & Drop (Pointer Events - funktioniert mit Maus, Touch & Stift)
    ============================================================ */
 
-let drag = null; // { kind: 'new'|'move', paletteItem?, noteId?, width }
+let drag = null; // { kind: 'new'|'move', paletteItem?, noteId?, width, isPair, innerHtml }
 
 const dragGhost = document.getElementById('dragGhost');
 
@@ -374,8 +374,9 @@ function startDragNew(e, paletteItem) {
   const type = noteType(paletteItem.typeId);
   const units = isPair ? paletteItem.units : type.units;
   const width = units * SLOT_W;
-  drag = { kind: 'new', paletteItem, width };
-  beginGhost(isPair ? pairGhostHtml() : singleGhostHtml(type.icon, width));
+  const innerHtml = isPair ? pairInnerHtml() : singleInnerHtml(type.icon);
+  drag = { kind: 'new', paletteItem, width, isPair, innerHtml };
+  beginGhost(wrapHtml(innerHtml, width, isPair));
   document.addEventListener('pointermove', onDragMove);
   document.addEventListener('pointerup', onDragEnd);
 }
@@ -387,24 +388,26 @@ function startDragMove(e, noteId) {
   if (!loc) return;
   const type = noteType(loc.measure.notes[loc.index].typeId);
   const width = type.units * SLOT_W;
-  drag = { kind: 'move', noteId, width };
-  beginGhost(singleGhostHtml(type.icon, width));
+  const innerHtml = singleInnerHtml(type.icon);
+  drag = { kind: 'move', noteId, width, isPair: false, innerHtml };
+  beginGhost(wrapHtml(innerHtml, width, false));
+  document.querySelectorAll(`[data-note-id="${noteId}"]`).forEach((el) => el.classList.add('dragging-source'));
   document.addEventListener('pointermove', onDragMove);
   document.addEventListener('pointerup', onDragEnd);
 }
 
-function singleGhostHtml(iconSvg, width) {
-  return `<div class="placed-note" style="width:${width}px;"><span class="icon">${iconSvg}</span></div>`;
+function singleInnerHtml(iconSvg) {
+  return `<span class="icon">${iconSvg}</span>`;
 }
 
-function pairGhostHtml() {
-  const width = 2 * SLOT_W;
+function pairInnerHtml() {
   const beamedIcon = noteType('quarter').icon;
-  return `<div class="placed-note-pair" style="width:${width}px;">
-    <div class="eighth-half"><span class="icon">${beamedIcon}</span></div>
-    <div class="eighth-half"><span class="icon">${beamedIcon}</span></div>
-    <div class="beam-bar"></div>
-  </div>`;
+  return `<div class="eighth-half"><span class="icon">${beamedIcon}</span></div><div class="eighth-half"><span class="icon">${beamedIcon}</span></div><div class="beam-bar"></div>`;
+}
+
+function wrapHtml(innerHtml, width, isPair) {
+  const cls = isPair ? 'placed-note-pair' : 'placed-note';
+  return `<div class="${cls}" style="width:${width}px;">${innerHtml}</div>`;
 }
 
 function beginGhost(html) {
@@ -412,6 +415,9 @@ function beginGhost(html) {
   dragGhost.hidden = false;
 }
 
+// Während des Ziehens bekommt die Note sofort ihre echte Feld-Breite direkt
+// im Takt zu sehen (nicht nur als loser Cursor-Anhang) - so ist auf einen
+// Blick klar, wie viel Platz noch da ist und ob die Note überhaupt passt.
 function onDragMove(e) {
   if (!drag) return;
   dragGhost.style.left = `${e.clientX}px`;
@@ -423,11 +429,34 @@ function onDragMove(e) {
   if (!track) return;
   track.classList.add('drag-over');
 
-  const { index, markerX } = computeDropIndex(track, e.clientX, drag.kind === 'move' ? drag.noteId : null);
-  const marker = document.createElement('div');
-  marker.className = 'drop-marker';
-  marker.style.left = `${markerX}px`;
-  track.appendChild(marker);
+  const excludeNoteId = drag.kind === 'move' ? drag.noteId : null;
+  const { referenceEl } = computeDropIndex(track, e.clientX, excludeNoteId);
+
+  const preview = document.createElement('div');
+  preview.className = `insert-preview${drag.isPair ? ' insert-preview-pair' : ''}`;
+  preview.style.width = `${drag.width}px`;
+  preview.style.flex = `0 0 ${drag.width}px`;
+  preview.innerHTML = drag.innerHtml;
+
+  const insertBeforeEl = topLevelChildOf(track, referenceEl);
+  if (insertBeforeEl) track.insertBefore(preview, insertBeforeEl);
+  else track.appendChild(preview);
+
+  const measure = state.measures.find((m) => m.id === track.dataset.measureId);
+  const existingUnits = measure.notes.reduce(
+    (sum, n) => sum + (n.id === excludeNoteId ? 0 : noteType(n.typeId).units),
+    0
+  );
+  const wouldBeUnits = existingUnits + drag.width / SLOT_W;
+  track.closest('.measure').classList.toggle('preview-overfull', wouldBeUnits > UNITS_PER_MEASURE);
+}
+
+// Läuft von einem Nachfahren (z. B. .eighth-half) zum direkten Kind von
+// `track` hoch, damit insertBefore ein gültiges Referenz-Element bekommt.
+function topLevelChildOf(track, el) {
+  let node = el;
+  while (node && node.parentElement !== track) node = node.parentElement;
+  return node;
 }
 
 function onDragEnd(e) {
@@ -472,12 +501,14 @@ function cleanupDrag() {
   dragGhost.hidden = true;
   dragGhost.innerHTML = '';
   clearDragHighlights();
+  document.querySelectorAll('.dragging-source').forEach((el) => el.classList.remove('dragging-source'));
   drag = null;
 }
 
 function clearDragHighlights() {
   document.querySelectorAll('.slot-track.drag-over').forEach((t) => t.classList.remove('drag-over'));
-  document.querySelectorAll('.drop-marker').forEach((m) => m.remove());
+  document.querySelectorAll('.insert-preview').forEach((p) => p.remove());
+  document.querySelectorAll('.measure.preview-overfull').forEach((m) => m.classList.remove('preview-overfull'));
 }
 
 function trackUnderPoint(x, y) {
@@ -496,18 +527,18 @@ function computeDropIndex(track, clientX, excludeNoteId) {
   );
 
   let index = items.length;
-  let markerX = items.length ? items[items.length - 1].getBoundingClientRect().right - rect.left : 0;
+  let referenceEl = null;
 
   for (let i = 0; i < items.length; i++) {
     const itemRect = items[i].getBoundingClientRect();
     const mid = itemRect.left - rect.left + itemRect.width / 2;
     if (relativeX < mid) {
       index = i;
-      markerX = itemRect.left - rect.left;
+      referenceEl = items[i];
       break;
     }
   }
-  return { index, markerX };
+  return { index, referenceEl };
 }
 
 /* ============================================================

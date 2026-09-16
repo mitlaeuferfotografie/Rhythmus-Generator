@@ -283,7 +283,8 @@ main {
    Note aus (nicht mittig in der ganzen Dauer-Fläche) - so wie auf der
    Notenwerte-Übersicht steht er exakt über der Zählzeit, an der die Note
    beginnt. Die Fläche rechts davon zeigt nur die Klangdauer. */
-.placed-note .icon {
+.placed-note .icon,
+.insert-preview .icon {
   position: absolute;
   left: var(--note-anchor);
   top: 50%;
@@ -291,7 +292,8 @@ main {
   width: 28px;
   height: 40px;
 }
-.placed-note .icon svg { width: 100%; height: 100%; display: block; }
+.placed-note .icon svg,
+.insert-preview .icon svg { width: 100%; height: 100%; display: block; }
 
 .placed-note .delete-btn {
   position: absolute;
@@ -382,14 +384,35 @@ main {
   box-shadow: inset 0 0 0 2px var(--accent);
 }
 
-.drop-marker {
-  position: absolute;
-  top: 4px;
-  bottom: 4px;
-  width: 4px;
-  background: var(--accent);
-  border-radius: 2px;
-  pointer-events: none;
+/* Live-Vorschau während des Ziehens: zeigt die Note schon in ihrer echten
+   Feld-Breite an der Stelle, an der sie landen würde, und schiebt die
+   anderen Noten dafür sichtbar zur Seite - so ist auf einen Blick klar, wie
+   viel Platz noch da ist und ob sie überhaupt passt. */
+.insert-preview {
+  position: relative;
+  align-self: stretch;
+  border: 2px dashed var(--accent);
+  border-radius: 8px;
+  background: rgba(47, 111, 237, 0.08);
+  opacity: 0.85;
+}
+.insert-preview .icon { opacity: 0.6; }
+.insert-preview-pair .beam-bar { opacity: 0.6; }
+
+.measure.preview-overfull {
+  border-color: var(--warn);
+  background: var(--warn-bg);
+}
+.measure.preview-overfull .insert-preview {
+  border-color: var(--warn);
+  background: rgba(224, 49, 49, 0.1);
+}
+
+/* Die gerade gezogene Note verschwindet kurz aus ihrer alten Position,
+   damit die verbleibenden Noten sofort zusammenrutschen und der frei
+   werdende Platz nicht doppelt gezählt wird. */
+.dragging-source {
+  display: none !important;
 }
 
 /* ---------- Drag ghost ---------- */
