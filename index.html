@@ -16,7 +16,16 @@
     <button id="clearBtn" class="btn btn-secondary">Alles leeren</button>
   </div>
 
+  <button id="settingsToggle" class="btn btn-secondary" aria-expanded="false" aria-controls="settingsPanel">
+    ⚙ Einstellungen
+  </button>
+
   <div class="toolbar-group">
+    <button id="playBtn" class="btn btn-play">▶ Abspielen</button>
+    <button id="stopBtn" class="btn btn-stop" disabled>■ Stopp</button>
+  </div>
+
+  <div id="settingsPanel" class="settings-panel" hidden>
     <label class="tempo-label">
       Tempo: <span id="bpmValue">90</span> BPM
       <input type="range" id="bpmSlider" min="40" max="180" value="90">
@@ -29,11 +38,6 @@
       Wiederholungen:
       <input type="number" id="repeatInput" min="1" max="50" value="4">
     </label>
-  </div>
-
-  <div class="toolbar-group">
-    <button id="playBtn" class="btn btn-play">▶ Abspielen</button>
-    <button id="stopBtn" class="btn btn-stop" disabled>■ Stopp</button>
   </div>
 </header>
 

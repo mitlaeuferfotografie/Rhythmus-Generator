@@ -865,6 +865,26 @@ repeatInput.addEventListener('change', () => {
   repeatInput.value = Math.max(1, Math.min(50, Math.round(Number(repeatInput.value)) || 1));
 });
 
+// Einstellungen-Flyout: Tempo/Grundschlag/Wiederholungen sind nicht mehr
+// permanent in der Werkzeugleiste sichtbar, sondern klappen als kleines
+// Overlay auf - schließt sich beim erneuten Klick auf den Knopf oder bei
+// einem Klick irgendwo außerhalb.
+const settingsToggle = document.getElementById('settingsToggle');
+const settingsPanel = document.getElementById('settingsPanel');
+
+settingsToggle.addEventListener('click', () => {
+  const willOpen = settingsPanel.hidden;
+  settingsPanel.hidden = !willOpen;
+  settingsToggle.setAttribute('aria-expanded', String(willOpen));
+});
+
+document.addEventListener('pointerdown', (e) => {
+  if (settingsPanel.hidden) return;
+  if (settingsPanel.contains(e.target) || e.target === settingsToggle) return;
+  settingsPanel.hidden = true;
+  settingsToggle.setAttribute('aria-expanded', 'false');
+});
+
 /* ============================================================
    Init
    ============================================================ */

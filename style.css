@@ -115,6 +115,49 @@ h1, h2, h3 { margin: 0; }
   border: none;
 }
 
+/* Tempo/Grundschlag/Wiederholungen sind ein Flyout statt permanent in der
+   Werkzeugleiste - die bleibt dadurch bei jeder Bildschirmbreite kurz,
+   statt bei jedem Umbruch höher zu werden und den Rest zu verdecken. */
+.settings-panel {
+  position: absolute;
+  top: 100%;
+  right: 24px;
+  margin-top: 6px;
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 12px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  z-index: 25;
+  min-width: 220px;
+}
+
+/* [hidden] hat allein dieselbe Spezifität wie die Klasse oben und würde
+   ohne diese kombinierte Regel vom display:flex überschrieben. */
+.settings-panel[hidden] {
+  display: none;
+}
+
+.settings-panel .tempo-label,
+.settings-panel .metronome-label,
+.settings-panel .repeat-label {
+  font-size: 1rem;
+}
+
+.settings-panel .tempo-label input[type="range"] {
+  width: 100%;
+  margin-top: 6px;
+}
+
+.settings-panel .tempo-label {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+
 /* ---------- Layout ---------- */
 
 /* Notenwerte-Palette liegt horizontal über den Takten (nicht mehr als
@@ -180,8 +223,10 @@ h1, h2, h3 { margin: 0; }
 /* Auf schmalen (Handy-)Bildschirmen sind die Karten insgesamt der größte
    Platzfresser zwischen Palette und Takt. Zwei Karten pro Zeile statt
    einer halbiert die nötige Scroll-Strecke - Text/Icon kleiner, aber die
-   Karte bleibt groß genug zum sicheren Antippen. */
-@media (max-width: 480px) {
+   Karte bleibt groß genug zum sicheren Antippen. Gleiche Grenze wie oben
+   (720px), damit beides zusammen umschaltet - nicht erst bei 480px, das
+   liegt bei manchen Handys schon über der Hochformat-Breite. */
+@media (max-width: 720px) {
   .palette-cards {
     display: grid;
     grid-template-columns: 1fr 1fr;
