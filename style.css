@@ -10,6 +10,7 @@
   --warn-bg: #fde8e8;
   --slot-w: 64px;
   --measure-gap: 18px;
+  --note-anchor: 15px; /* Icon-Position, sodass der Notenkopf exakt bei --slot-w/2 (Mitte der 1. Zählzeit-Spalte) landet */
   font-size: 20px;
 }
 
@@ -265,14 +266,11 @@ main {
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
   background: var(--paper);
   border: 2px solid var(--ink);
   border-radius: 8px;
   cursor: grab;
   touch-action: none;
-  padding: 4px;
   align-self: stretch;
 }
 
@@ -281,7 +279,15 @@ main {
   box-shadow: 0 0 0 3px rgba(47,111,237,0.35);
 }
 
+/* Der Notenkopf sitzt IMMER an einer festen Position vom linken Rand der
+   Note aus (nicht mittig in der ganzen Dauer-Fläche) - so wie auf der
+   Notenwerte-Übersicht steht er exakt über der Zählzeit, an der die Note
+   beginnt. Die Fläche rechts davon zeigt nur die Klangdauer. */
 .placed-note .icon {
+  position: absolute;
+  left: var(--note-anchor);
+  top: 50%;
+  transform: translateY(-50%);
   width: 28px;
   height: 40px;
 }
@@ -307,39 +313,70 @@ main {
 }
 .placed-note .delete-btn:hover { background: var(--warn); color: white; border-color: var(--warn); }
 
-/* Achtelpaar: eine gemeinsame Grafik (Fläche = exakt 2 Achtel = 1 Viertel),
-   darüber zwei unsichtbare Trefferflächen für unabhängiges Ziehen/Löschen
-   jeder einzelnen Achtelnote. */
-
-.eighth-pair-visual {
-  padding: 0;
-  overflow: visible;
+/* Achtelpaar: EINE gemeinsame Karte (wie jede andere Note), aber innen zwei
+   unverzerrte Notenkopf-Grafiken (gleiche Form wie die Viertel, ohne
+   Fähnchen) + ein Balken dazwischen statt einer gestreckten Einzelgrafik.
+   Jede Hälfte bleibt einzeln greifbar/löschbar. */
+.placed-note-pair {
+  position: relative;
+  display: flex;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  align-self: stretch;
 }
 
-.placed-note .icon.icon-pair {
-  width: 100%;
-  height: 56px;
-}
-.icon-pair svg { width: 100%; height: 100%; display: block; }
-
-.eighth-hit {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 50%;
+.eighth-half {
+  position: relative;
+  flex: 1 1 auto;
   cursor: grab;
   touch-action: none;
 }
-.eighth-hit.left { left: 0; }
-.eighth-hit.right { left: 50%; }
 
-.eighth-hit .delete-btn {
-  top: -10px;
+.eighth-half .icon {
+  position: absolute;
+  left: var(--note-anchor);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 40px;
 }
-.eighth-hit.left .delete-btn { left: -10px; right: auto; }
-.eighth-hit.right .delete-btn { right: -10px; }
+.eighth-half .icon svg { width: 100%; height: 100%; display: block; }
 
-.eighth-hit.playing {
+.eighth-half .delete-btn {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+.eighth-half .delete-btn:hover { background: var(--warn); color: white; border-color: var(--warn); }
+.eighth-half .delete-btn-left { right: auto; left: -10px; }
+
+/* Balken: verbindet die Hälse der beiden Achtel exakt (Position ergibt sich
+   direkt aus der Notenkopf-Verankerung bei 21px + Halsversatz). */
+.beam-bar {
+  position: absolute;
+  top: calc(50% - 15px);
+  left: calc(var(--note-anchor) + 18px);
+  width: var(--slot-w);
+  height: 6px;
+  background: var(--ink);
+  pointer-events: none;
+}
+
+.eighth-half.playing {
   background: rgba(47, 111, 237, 0.18);
   border-radius: 6px;
   box-shadow: inset 0 0 0 2px var(--accent);
@@ -366,7 +403,8 @@ main {
 }
 
 .drag-ghost .note-card,
-.drag-ghost .placed-note {
+.drag-ghost .placed-note,
+.drag-ghost .placed-note-pair {
   cursor: default;
 }
 

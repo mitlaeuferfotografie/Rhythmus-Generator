@@ -8,13 +8,18 @@
 const SLOT_W = 64; // px pro Achtel-Einheit, muss zu --slot-w in style.css passen
 const UNITS_PER_MEASURE = 8;
 
+// Jede Note wird per CSS (.placed-note .icon) an einer festen Position
+// verankert, NICHT in der Mitte ihrer gesamten Dauer-Fläche: der Notenkopf
+// (immer bei cx=16 im 40er-viewBox) sitzt exakt über der Zählzeit, an der
+// die Note beginnt - so wie auf der Notenwerte-Übersicht. Die Fläche rechts
+// davon zeigt nur, wie lange die Note klingt.
 const NOTE_TYPES = [
   {
     id: 'whole',
     name: 'Ganze Note',
     units: 8,
     isRest: false,
-    icon: `<svg viewBox="0 0 40 48"><ellipse cx="20" cy="30" rx="13" ry="8" transform="rotate(-15 20 30)" fill="none" stroke="#1a1a1a" stroke-width="4"/></svg>`,
+    icon: `<svg viewBox="0 0 40 48"><ellipse cx="16" cy="30" rx="13" ry="8" transform="rotate(-15 16 30)" fill="none" stroke="#1a1a1a" stroke-width="4"/></svg>`,
   },
   {
     id: 'half',
@@ -47,18 +52,14 @@ const NOTE_TYPES = [
   },
 ];
 
-// Fläche/Grafik für zwei benachbarte, durch einen Balken verbundene Achtel.
-// viewBox-Breite 80 wird per preserveAspectRatio="none" exakt auf die Breite
-// von 2 Einheiten gestreckt -> Notenkopf 1 liegt exakt bei 25% (= Mitte der
-// ersten Achtel-Einheit, unter Zählzeit "1"), Notenkopf 2 exakt bei 75%
-// (= Mitte der zweiten Einheit, unter "+"). So ergeben 2 Achtel exakt die
-// gleiche Fläche wie eine Viertelnote.
-const EIGHTH_PAIR_SVG = `<svg viewBox="0 0 80 48" preserveAspectRatio="none">
-  <ellipse cx="20" cy="36" rx="10" ry="7" transform="rotate(-15 20 36)" fill="#1a1a1a"/>
-  <ellipse cx="60" cy="36" rx="10" ry="7" transform="rotate(-15 60 36)" fill="#1a1a1a"/>
-  <line x1="29" y1="33" x2="29" y2="6" stroke="#1a1a1a" stroke-width="3.5"/>
-  <line x1="69" y1="33" x2="69" y2="6" stroke="#1a1a1a" stroke-width="3.5"/>
-  <rect x="29" y="4" width="40" height="6" fill="#1a1a1a"/>
+// Kompakte, NICHT verzerrte Vorschau-Grafik nur für die Palette-Karte
+// "Achtelpaar" (natürliches Seitenverhältnis, kein preserveAspectRatio-Hack).
+const PALETTE_PAIR_ICON = `<svg viewBox="0 0 64 40">
+  <ellipse cx="12" cy="30" rx="9" ry="6.5" transform="rotate(-15 12 30)" fill="#1a1a1a"/>
+  <ellipse cx="44" cy="30" rx="9" ry="6.5" transform="rotate(-15 44 30)" fill="#1a1a1a"/>
+  <line x1="20" y1="27" x2="20" y2="4" stroke="#1a1a1a" stroke-width="3"/>
+  <line x1="52" y1="27" x2="52" y2="4" stroke="#1a1a1a" stroke-width="3"/>
+  <rect x="20" y="2" width="32" height="5" fill="#1a1a1a"/>
 </svg>`;
 
 const noteType = (id) => NOTE_TYPES.find((t) => t.id === id);
@@ -136,7 +137,7 @@ function renderPalette() {
     const isPair = item.kind === 'pair';
     const units = isPair ? item.units : type.units;
     const name = isPair ? item.name : type.name;
-    const icon = isPair ? EIGHTH_PAIR_SVG : type.icon;
+    const icon = isPair ? PALETTE_PAIR_ICON : type.icon;
     const beatsLabel = formatBeats(units);
 
     const card = document.createElement('div');
@@ -288,23 +289,31 @@ function renderPlacedNote(note, type) {
   return el;
 }
 
+// Zwei einzelne, undehnte Notenkopf-Grafiken (gleiche Form wie die Viertel,
+// nur ohne Fähnchen) + ein per CSS positionierter Balken dazwischen - anstatt
+// eine einzelne Grafik zu verzerren. Jede Hälfte bleibt einzeln greifbar/
+// löschbar (eigene note-id), sitzt aber ohne eigenen Rahmen in einer
+// gemeinsamen Karte, damit es wie EIN Notenblock aussieht.
 function renderEighthPair(noteA, noteB) {
   const width = 2 * SLOT_W;
+  const beamedIcon = noteType('quarter').icon;
   const el = document.createElement('div');
-  el.className = 'placed-note eighth-pair-visual';
+  el.className = 'placed-note-pair';
   el.style.width = `${width}px`;
   el.style.flex = `0 0 ${width}px`;
   el.innerHTML = `
-    <span class="icon icon-pair">${EIGHTH_PAIR_SVG}</span>
-    <div class="eighth-hit left" data-note-id="${noteA.id}">
+    <div class="eighth-half" data-note-id="${noteA.id}">
+      <span class="icon">${beamedIcon}</span>
+      <button class="delete-btn delete-btn-left" title="Entfernen">×</button>
+    </div>
+    <div class="eighth-half" data-note-id="${noteB.id}">
+      <span class="icon">${beamedIcon}</span>
       <button class="delete-btn" title="Entfernen">×</button>
     </div>
-    <div class="eighth-hit right" data-note-id="${noteB.id}">
-      <button class="delete-btn" title="Entfernen">×</button>
-    </div>
+    <div class="beam-bar"></div>
   `;
-  el.querySelectorAll('.eighth-hit').forEach((hit) => {
-    attachNoteInteractions(hit, hit.dataset.noteId);
+  el.querySelectorAll('.eighth-half').forEach((half) => {
+    attachNoteInteractions(half, half.dataset.noteId);
   });
   return el;
 }
@@ -346,7 +355,7 @@ function removeMeasure(measureId) {
 }
 
 function clearAll() {
-  state.measures = [newMeasure(), newMeasure()];
+  state.measures = [newMeasure()];
   renderMeasures();
 }
 
@@ -364,9 +373,9 @@ function startDragNew(e, paletteItem) {
   const isPair = paletteItem.kind === 'pair';
   const type = noteType(paletteItem.typeId);
   const units = isPair ? paletteItem.units : type.units;
-  const icon = isPair ? EIGHTH_PAIR_SVG : type.icon;
-  drag = { kind: 'new', paletteItem, width: units * SLOT_W };
-  beginGhost(icon, drag.width);
+  const width = units * SLOT_W;
+  drag = { kind: 'new', paletteItem, width };
+  beginGhost(isPair ? pairGhostHtml() : singleGhostHtml(type.icon, width));
   document.addEventListener('pointermove', onDragMove);
   document.addEventListener('pointerup', onDragEnd);
 }
@@ -377,14 +386,29 @@ function startDragMove(e, noteId) {
   const loc = findNoteLocation(noteId);
   if (!loc) return;
   const type = noteType(loc.measure.notes[loc.index].typeId);
-  drag = { kind: 'move', noteId, width: type.units * SLOT_W };
-  beginGhost(type.icon, drag.width);
+  const width = type.units * SLOT_W;
+  drag = { kind: 'move', noteId, width };
+  beginGhost(singleGhostHtml(type.icon, width));
   document.addEventListener('pointermove', onDragMove);
   document.addEventListener('pointerup', onDragEnd);
 }
 
-function beginGhost(iconSvg, width) {
-  dragGhost.innerHTML = `<div class="placed-note" style="width:${width}px;"><span class="icon">${iconSvg}</span></div>`;
+function singleGhostHtml(iconSvg, width) {
+  return `<div class="placed-note" style="width:${width}px;"><span class="icon">${iconSvg}</span></div>`;
+}
+
+function pairGhostHtml() {
+  const width = 2 * SLOT_W;
+  const beamedIcon = noteType('quarter').icon;
+  return `<div class="placed-note-pair" style="width:${width}px;">
+    <div class="eighth-half"><span class="icon">${beamedIcon}</span></div>
+    <div class="eighth-half"><span class="icon">${beamedIcon}</span></div>
+    <div class="beam-bar"></div>
+  </div>`;
+}
+
+function beginGhost(html) {
+  dragGhost.innerHTML = html;
   dragGhost.hidden = false;
 }
 
@@ -464,21 +488,22 @@ function trackUnderPoint(x, y) {
 function computeDropIndex(track, clientX, excludeNoteId) {
   const rect = track.getBoundingClientRect();
   const relativeX = clientX - rect.left;
-  const items = Array.from(track.querySelectorAll('.placed-note')).filter(
+  // [data-note-id] matcht sowohl einzelne Noten (.placed-note) als auch
+  // jede Hälfte eines Achtelpaars (.eighth-half) - eine echte Note pro
+  // Eintrag, unabhängig davon, wie sie gerade gruppiert dargestellt wird.
+  const items = Array.from(track.querySelectorAll('[data-note-id]')).filter(
     (el) => el.dataset.noteId !== excludeNoteId
   );
 
   let index = items.length;
-  let markerX = items.length
-    ? items[items.length - 1].offsetLeft + items[items.length - 1].offsetWidth
-    : 0;
+  let markerX = items.length ? items[items.length - 1].getBoundingClientRect().right - rect.left : 0;
 
   for (let i = 0; i < items.length; i++) {
     const itemRect = items[i].getBoundingClientRect();
     const mid = itemRect.left - rect.left + itemRect.width / 2;
     if (relativeX < mid) {
       index = i;
-      markerX = items[i].offsetLeft;
+      markerX = itemRect.left - rect.left;
       break;
     }
   }
@@ -648,6 +673,6 @@ repeatInput.addEventListener('change', () => {
    Init
    ============================================================ */
 
-state.measures = [newMeasure(), newMeasure()];
+state.measures = [newMeasure()];
 renderPalette();
 renderMeasures();
