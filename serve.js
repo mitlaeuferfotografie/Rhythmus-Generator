@@ -35,5 +35,5 @@ http
     });
   })
   .listen(PORT, () => {
-    console.log(`Serving Rhythmus-Tafel at http://localhost:${PORT}`);
+    console.log(`Serving Rhythmus-Generator at http://localhost:${PORT}`);
   });
