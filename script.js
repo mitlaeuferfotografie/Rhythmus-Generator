@@ -57,11 +57,39 @@ const NOTE_TYPES = [
     icon: `<svg viewBox="0 0 40 48"><ellipse cx="16" cy="36" rx="11" ry="7.5" transform="rotate(-15 16 36)" fill="#1a1a1a" stroke="#1a1a1a" stroke-width="3.5"/><line x1="26" y1="33" x2="26" y2="6" stroke="#1a1a1a" stroke-width="3.5"/><path d="M26 6 C34 8 37 15 32 21 C30.5 23 29 21.5 29 19 C31 16 30 11 26 9 Z" fill="#1a1a1a"/></svg>`,
   },
   {
+    id: 'wholeRest',
+    name: 'Ganze Pause',
+    units: 8,
+    isRest: true,
+    // Hängt UNTER der (angedeuteten) Linie - liegt mit der Oberkante auf ihr auf.
+    icon: `<svg viewBox="0 0 40 48"><line x1="4" y1="20" x2="30" y2="20" stroke="#1a1a1a" stroke-width="1.5" opacity="0.3"/><rect x="7" y="20" width="18" height="7" fill="#1a1a1a"/></svg>`,
+  },
+  {
+    id: 'halfRest',
+    name: 'Halbe Pause',
+    units: 4,
+    isRest: true,
+    // Sitzt AUF der (angedeuteten) Linie - liegt mit der Unterkante auf ihr auf.
+    icon: `<svg viewBox="0 0 40 48"><line x1="4" y1="20" x2="30" y2="20" stroke="#1a1a1a" stroke-width="1.5" opacity="0.3"/><rect x="7" y="13" width="18" height="7" fill="#1a1a1a"/></svg>`,
+  },
+  {
     id: 'quarterRest',
     name: 'Viertelpause',
     units: 2,
     isRest: true,
-    icon: `<svg viewBox="0 0 40 48"><path d="M18 6 L27 15 L18 24 L27 31 L16 43" fill="none" stroke="#1a1a1a" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+    // Geschwungenes "Z" statt scharfer Zickzack-Ecken - näher an der
+    // gängigen Notenschrift-Form.
+    icon: `<svg viewBox="0 0 40 48"><path d="M21 5 C27 9 27 13 20 17 C14 21 14 25 21 30 C27 34 27 38 18 44" fill="none" stroke="#1a1a1a" stroke-width="4.5" stroke-linecap="round"/></svg>`,
+  },
+  {
+    id: 'eighthRest',
+    name: 'Achtelpause',
+    units: 1,
+    isRest: true,
+    // Fähnchen (wie bei der Achtelnote, aber ohne Notenkopf/Hals) an einem
+    // schrägen Strich - Fähnchen deutlich größer als der Strich breit ist,
+    // damit es klar als eigene Form erkennbar bleibt statt zu verschmelzen.
+    icon: `<svg viewBox="0 0 40 48"><path d="M26 5 C33 7 34 15 27 20 C25 21.5 23 20 23.5 17.5 C26.5 14.5 26.5 9 26 5 Z" fill="#1a1a1a"/><line x1="24" y1="19" x2="11" y2="41" stroke="#1a1a1a" stroke-width="3.5" stroke-linecap="round"/></svg>`,
   },
 ];
 
@@ -83,11 +111,14 @@ const noteType = (id) => NOTE_TYPES.find((t) => t.id === id);
 // unabhängige Noten - Balken werden beim Rendern automatisch erkannt.
 const PALETTE_ITEMS = [
   { kind: 'single', typeId: 'whole' },
+  { kind: 'single', typeId: 'wholeRest' },
   { kind: 'single', typeId: 'half' },
+  { kind: 'single', typeId: 'halfRest' },
   { kind: 'single', typeId: 'quarter' },
+  { kind: 'single', typeId: 'quarterRest' },
   { kind: 'pair', typeId: 'eighth', name: 'Achtelpaar', units: 2 },
   { kind: 'single', typeId: 'eighth' },
-  { kind: 'single', typeId: 'quarterRest' },
+  { kind: 'single', typeId: 'eighthRest' },
 ];
 
 /* ============================================================
