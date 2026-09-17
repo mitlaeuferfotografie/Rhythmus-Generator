@@ -9,7 +9,7 @@
      Ohne Versionsnummer kann ein Browser sonst eine alte index.html mit
      einem neuen script.js mischen (oder umgekehrt) und abstürzen, wenn
      sich IDs/Struktur zwischen den Versionen geändert haben. -->
-<link rel="stylesheet" href="style.css?v=14">
+<link rel="stylesheet" href="style.css?v=15">
 </head>
 <body>
 
@@ -49,33 +49,37 @@
     ⚙ Einstellungen
   </button>
   <button id="playPauseBtn" class="play-pause-btn">▶ Abspielen</button>
+</div>
 
-  <div id="settingsPanel" class="settings-panel" hidden>
-    <label class="tempo-label">
-      Tempo: <span id="bpmValue">90</span> BPM
-      <input type="range" id="bpmSlider" min="40" max="180" value="90">
-    </label>
-    <label class="metronome-label">
-      <input type="checkbox" id="metronomeToggle" checked>
-      Grundschlag
-    </label>
-    <label class="repeat-label">
-      Wiederholungen:
-      <input type="number" id="repeatInput" min="1" max="50" value="4">
-    </label>
-    <label class="volume-label">
-      Lautstärke Noten: <span id="noteVolumeValue">60</span> %
-      <input type="range" id="noteVolumeSlider" min="0" max="100" value="60">
-    </label>
-    <label class="volume-label">
-      Lautstärke Metronom: <span id="clickVolumeValue">50</span> %
-      <input type="range" id="clickVolumeSlider" min="0" max="100" value="50">
-    </label>
-  </div>
+<!-- Bewusst AUSSERHALB von .bottom-bar: dessen transform (für die
+     Zentrierung per translateX) würde sonst zum Containing-Block für dieses
+     position:fixed-Panel, wodurch sich left/right nicht mehr auf den
+     Viewport, sondern auf die schmale Bottom-Bar-Breite bezögen. -->
+<div id="settingsPanel" class="settings-panel" hidden>
+  <label class="tempo-label">
+    Tempo: <span id="bpmValue">90</span> BPM
+    <input type="range" id="bpmSlider" min="40" max="180" value="90">
+  </label>
+  <label class="metronome-label">
+    <input type="checkbox" id="metronomeToggle" checked>
+    Grundschlag
+  </label>
+  <label class="repeat-label">
+    Wiederholungen:
+    <input type="number" id="repeatInput" min="1" max="50" value="4">
+  </label>
+  <label class="volume-label">
+    Lautstärke Noten: <span id="noteVolumeValue">60</span> %
+    <input type="range" id="noteVolumeSlider" min="0" max="100" value="60">
+  </label>
+  <label class="volume-label">
+    Lautstärke Metronom: <span id="clickVolumeValue">50</span> %
+    <input type="range" id="clickVolumeSlider" min="0" max="100" value="50">
+  </label>
 </div>
 
 <div id="dragGhost" class="drag-ghost" hidden></div>
 
-<script src="script.js?v=14"></script>
+<script src="script.js?v=15"></script>
 </body>
 </html>

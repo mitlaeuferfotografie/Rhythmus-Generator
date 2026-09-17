@@ -158,22 +158,30 @@ h1, h2, h3 { margin: 0; }
 
 /* Tempo/Grundschlag/Wiederholungen sind ein Flyout statt permanent in der
    Werkzeugleiste - die bleibt dadurch bei jeder Bildschirmbreite kurz,
-   statt bei jedem Umbruch höher zu werden und den Rest zu verdecken. */
+   statt bei jedem Umbruch höher zu werden und den Rest zu verdecken.
+   Fixed statt absolute (nicht mehr an die schmale .bottom-bar-Breite
+   gebunden) und über die volle Displaybreite - die Regler fließen dadurch
+   in Zeilen statt in einer einzigen hohen Spalte übereinander zu stehen,
+   das Panel bleibt so auch im flachen Querformat kurz. */
 .settings-panel {
-  position: absolute;
-  bottom: 100%;
-  left: 0;
-  margin-bottom: 10px;
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: 100px;
   background: var(--paper);
   color: var(--ink);
   border-radius: 12px;
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
-  padding: 18px 20px;
+  padding: 16px 20px;
   display: flex;
-  flex-direction: column;
-  gap: 16px;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 14px 28px;
   z-index: 25;
-  min-width: 220px;
+  max-height: 70vh;
+  overflow-y: auto;
 }
 
 /* [hidden] hat allein dieselbe Spezifität wie die Klasse oben und würde
@@ -197,9 +205,16 @@ h1, h2, h3 { margin: 0; }
 
 .settings-panel .tempo-label,
 .settings-panel .volume-label {
+  flex: 1 1 190px;
+  max-width: 260px;
   flex-direction: column;
   align-items: stretch;
   gap: 4px;
+}
+
+.settings-panel .metronome-label,
+.settings-panel .repeat-label {
+  flex: 0 0 auto;
 }
 
 /* ---------- Layout ---------- */
@@ -615,5 +630,15 @@ main {
 .drag-ghost .placed-note,
 .drag-ghost .placed-note-pair {
   cursor: default;
+}
+
+/* .placed-note/-pair verlassen sich normalerweise auf align-self:stretch
+   innerhalb der festen Höhe von .slot-track - der frei schwebende Ghost hat
+   keinen solchen Rahmen, würde also ohne explizite Höhe auf eine dünne Linie
+   zusammenfallen (das Icon schwebt dann lose daneben statt sichtbar DRIN zu
+   stecken). Feste Höhe = exakt die Form, die die Note gleich im Raster hat. */
+.drag-ghost .placed-note,
+.drag-ghost .placed-note-pair {
+  height: 96px;
 }
 
