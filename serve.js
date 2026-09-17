@@ -12,6 +12,7 @@ const MIME = {
   '.png': 'image/png',
   '.svg': 'image/svg+xml',
   '.json': 'application/json',
+  '.wav': 'audio/wav',
 };
 
 http

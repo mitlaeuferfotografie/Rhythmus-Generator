@@ -662,6 +662,26 @@ let activeTimeouts = [];
 let noteMasterGain = null;
 let clickMasterGain = null;
 
+// Echte Vibraphon-Aufnahme (CC0, VSCO-2-CE von Versilian Studios) statt
+// synthetisiertem Ton - klingt natürlich ca. 2.4s aus, lang genug um auch
+// halbe/ganze Noten glaubwürdig zu halten, statt wie ein kurzer Punktklang
+// (Xylophon o.ä.) sofort zu verstummen.
+let noteBuffer = null;
+let noteBufferPromise = null;
+
+function loadNoteSample() {
+  if (!noteBufferPromise) {
+    noteBufferPromise = fetch('sounds/vibraphone.wav')
+      .then((res) => res.arrayBuffer())
+      .then((data) => audioCtx.decodeAudioData(data))
+      .then((buffer) => {
+        noteBuffer = buffer;
+        return buffer;
+      });
+  }
+  return noteBufferPromise;
+}
+
 function ensureAudioContext() {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -671,62 +691,38 @@ function ensureAudioContext() {
     clickMasterGain = audioCtx.createGain();
     clickMasterGain.gain.value = state.clickVolume;
     clickMasterGain.connect(audioCtx.destination);
+    loadNoteSample();
   }
   if (audioCtx.state === 'suspended') audioCtx.resume();
   return audioCtx;
 }
 
-// Metallophon-artiger Klang: zwei leicht gegeneinander verstimmte
-// Grundton-Oszillatoren erzeugen ein sanftes Schweben (wie bei echten
-// Metallophon-/Vibraphonstäben), dazu ein leiser, nicht-harmonischer Oberton
-// für die metallische Klangfarbe. Bleibt DURCHGEHEND gleich laut und wird
-// erst kurz vor Ende der Notendauer leiser, damit die hörbare Länge exakt
-// dem Notenwert entspricht (kein früh abklingender Mallet-Schlag).
-function scheduleTone(startTime, duration, frequency) {
+function scheduleTone(startTime, duration) {
+  if (!noteBuffer) return;
   const ctx = audioCtx;
-  const detune = 3; // Hz Verstimmung zwischen den beiden Grundton-Oszillatoren
 
-  const oscA = ctx.createOscillator();
-  const oscB = ctx.createOscillator();
-  const overtone = ctx.createOscillator();
-  const gainA = ctx.createGain();
-  const gainB = ctx.createGain();
-  const overtoneGain = ctx.createGain();
+  const source = ctx.createBufferSource();
+  source.buffer = noteBuffer;
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(1, startTime);
 
-  oscA.type = 'sine';
-  oscA.frequency.value = frequency - detune;
-  oscB.type = 'sine';
-  oscB.frequency.value = frequency + detune;
-  overtone.type = 'sine';
-  overtone.frequency.value = frequency * 2.4;
+  const release = 0.06;
+  if (duration < noteBuffer.duration) {
+    // Note ist kürzer als das natürliche Ausklingen des Samples: knapp vor
+    // Ende der Notendauer sauber ausblenden, damit sie nicht in die nächste
+    // Note hineinklingt.
+    gain.gain.setValueAtTime(1, startTime + Math.max(0, duration - release));
+    gain.gain.linearRampToValueAtTime(0, startTime + duration);
+  }
+  // Sonst: den echten Ton einfach vollständig natürlich ausklingen lassen -
+  // auch ein real gespieltes Vibraphon klingt bei einer gehaltenen Note
+  // irgendwann von selbst aus.
 
-  const attack = 0.015;
-  const release = Math.min(0.06, duration * 0.25);
-  const sustainEnd = Math.max(attack, duration - release);
-  const peak = 0.32;
-
-  [gainA, gainB].forEach((g) => {
-    g.gain.setValueAtTime(0, startTime);
-    g.gain.linearRampToValueAtTime(peak, startTime + attack);
-    g.gain.setValueAtTime(peak, startTime + sustainEnd);
-    g.gain.linearRampToValueAtTime(0, startTime + duration);
-  });
-
-  overtoneGain.gain.setValueAtTime(0, startTime);
-  overtoneGain.gain.linearRampToValueAtTime(peak * 0.22, startTime + attack);
-  overtoneGain.gain.setValueAtTime(peak * 0.22, startTime + sustainEnd);
-  overtoneGain.gain.linearRampToValueAtTime(0, startTime + duration);
-
-  oscA.connect(gainA).connect(noteMasterGain);
-  oscB.connect(gainB).connect(noteMasterGain);
-  overtone.connect(overtoneGain).connect(noteMasterGain);
-
-  const stopTime = startTime + duration + 0.02;
-  [oscA, oscB, overtone].forEach((o) => {
-    o.start(startTime);
-    o.stop(stopTime);
-  });
-  activeOscillators.push(oscA, oscB, overtone);
+  source.connect(gain).connect(noteMasterGain);
+  source.start(startTime);
+  const stopTime = startTime + Math.min(duration, noteBuffer.duration) + release + 0.02;
+  source.stop(stopTime);
+  activeOscillators.push(source);
 }
 
 function scheduleClick(startTime) {
@@ -743,12 +739,18 @@ function scheduleClick(startTime) {
   activeOscillators.push(osc);
 }
 
-function play() {
+async function play() {
   if (state.isPlaying) return;
-  ensureAudioContext();
   state.isPlaying = true;
+  ensureAudioContext();
   playPauseBtn.textContent = '■ Stopp';
   playPauseBtn.classList.add('is-playing');
+
+  // Beim allerersten Abspielen muss das Vibraphon-Sample erst geladen werden -
+  // ohne dieses Warten würde die erste Note stumm bleiben, weil der Fetch
+  // noch nicht fertig ist, wenn scheduleTone() sie verplanen will.
+  await loadNoteSample();
+  if (!state.isPlaying) return;
 
   const startAt = audioCtx.currentTime + 0.15;
   const repeatCount = Math.max(1, Math.min(50, Math.round(Number(repeatInput.value)) || 1));
@@ -849,7 +851,7 @@ function scheduleAhead() {
       const { note, type } = timeline.noteByUnit.get(unit);
       const noteDuration = type.units * unitSeconds;
       if (!type.isRest) {
-        scheduleTone(time, noteDuration * 0.92, 523.25);
+        scheduleTone(time, noteDuration * 0.92);
       }
       s.noteRealSegments.push({ noteId: note.id, startTime: time, endTime: time + noteDuration });
     }
