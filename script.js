@@ -78,7 +78,7 @@ const NOTE_TYPES = [
     // skaliert - das Fähnchen reicht dadurch (wie im Original) deutlich
     // weiter am Hals herunter, statt wie vorher ein kleiner, kurzer Haken
     // direkt an der Spitze zu sein.
-    icon: `<svg viewBox="0 0 40 56"><ellipse cx="16" cy="46" rx="11" ry="7.5" transform="rotate(-15 16 46)" fill="#1a1a1a" stroke="#1a1a1a" stroke-width="3.5"/><line x1="26" y1="43" x2="26" y2="3" stroke="#1a1a1a" stroke-width="3.5"/><path d="M26 4.1 C25.3 11.7 31.8 14.4 34.9 17.8 C37.9 21.2 39 25 38.9 28.5 C38.9 29.5 38.6 33.7 35.8 37.8 C39.6 27.4 36.1 23.2 32.6 19.9 C28.5 15.8 25.4 12.1 26 4.1 Z" fill="#1a1a1a"/></svg>`,
+    icon: `<svg viewBox="0 0 40 56"><ellipse cx="16" cy="46" rx="11" ry="7.5" transform="rotate(-15 16 46)" fill="#1a1a1a" stroke="#1a1a1a" stroke-width="3.5"/><line x1="26" y1="43" x2="26" y2="3" stroke="#1a1a1a" stroke-width="3.5"/><path d="M26 4.1 C25.4 10.2 30.6 12.3 33.1 15.1 C35.5 17.8 36.4 20.8 36.3 23.6 C36.3 24.4 36.1 27.8 33.8 31.1 C36.9 22.7 34.1 19.4 31.3 16.7 C28 13.5 25.5 10.5 26 4.1 Z" fill="#1a1a1a"/></svg>`,
   },
   {
     id: 'wholeRest',
