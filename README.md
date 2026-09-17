@@ -18,24 +18,26 @@ Viertelnote.
 
 - Notenwerte-Palette liegt oben (Noten links, Pausen rechts) und bleibt beim
   Scrollen sichtbar. Karte in einen Takt ziehen; während des Ziehens zeigt
-  eine Live-Vorschau schon die echte Feldgröße im Takt.
+  eine Live-Vorschau schon die echte Feldgröße im Takt. Eine Note landet
+  dabei exakt an der Zählzeit, an der man sie ablegt – eine Lücke davor
+  (z. B. wenn zuerst Zählzeit 4 belegt wird) wird automatisch mit den
+  passenden Pausen aufgefüllt.
 - Bereits platzierte Noten lassen sich innerhalb eines Takts oder in einen
   anderen Takt verschieben; aus dem Raster herausziehen entfernt sie.
 - Kleines "×" auf einer Note entfernt sie direkt.
 - "+ Takt" fügt einen weiteren Takt hinzu, "×" am Takt-Kopf entfernt ihn.
-- Jeder Takt hat seine eigene Taktart: Klick auf das Taktart-Symbol (oben
-  links im Takt, in klassischer Notenschrift) wechselt reihum durch 4/4,
-  3/4 und 6/8. Zählzeiten-Beschriftung, Schlag-Trennlinien und Grundschlag
-  passen sich automatisch an (6/8 klickt auf den zwei zusammengesetzten
-  Schlägen statt auf jeder Achtel).
+- Jeder Takt hat seine eigene Taktart: das Dropdown direkt vor dem ersten
+  Feld im Raster wählt zwischen 4/4, 3/4 und 6/8. Zählzeiten-Beschriftung,
+  Schlag-Trennlinien und Grundschlag passen sich automatisch an (6/8 klickt
+  auf den zwei zusammengesetzten Schlägen statt auf jeder Achtel).
 - Ein Takt zeigt seinen Füllstand farbig an: grau = leer, amber = angefangen
   aber noch nicht voll, grün ("Voll ✓") = genau voll, rot ("Übervoll!") =
   mehr Noten als die Taktart erlaubt – die überzähligen Noten laufen dabei
   sichtbar aus, statt einen Scrollbalken zu brauchen. Ein übervoller Takt
   lässt sich nicht abspielen ("Abspielen" ist dann deaktiviert), bis er
   korrigiert ist.
-- Rechts neben jedem Raster legt ein Zahlenfeld fest, wie oft genau DIESER
-  Takt wiederholt wird (Standard: 4, frei von 1 bis 50), bevor es mit dem
+- Rechts neben jedem Raster wählt ein Dropdown, wie oft genau DIESER Takt
+  wiederholt wird (Standard: 4, frei von 1 bis 50), bevor es mit dem
   nächsten Takt weitergeht.
 - "Abspielen" spielt alle Takte der Reihe nach in der eingestellten
   Geschwindigkeit (Tempo-Regler) ab, jeden Takt so oft wie eingestellt

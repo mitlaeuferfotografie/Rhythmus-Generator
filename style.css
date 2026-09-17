@@ -403,24 +403,6 @@ main {
 }
 .measure-remove:hover { color: var(--warn); }
 
-/* Taktart-Symbol in klassischer Notenschrift (zwei Ziffern übereinander,
-   ohne Bruchstrich) - Klick wechselt reihum durch 4/4, 3/4, 6/8. */
-.time-sig-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  line-height: 1;
-  background: none;
-  border: none;
-  padding: 0 4px;
-  cursor: pointer;
-  font-weight: 700;
-  font-size: 1.05rem;
-  color: var(--ink);
-}
-.time-sig-btn:hover { color: var(--accent); }
-.time-sig-btn .ts-num { display: block; }
-
 /* Raster (Notenspur + Zählzeiten-Zahlen) links, Wiederholungen-Feld rechts
    daneben - beide über die volle Höhe des Takts. */
 .measure-body {
@@ -429,31 +411,57 @@ main {
   gap: 12px;
 }
 
+/* Zwei Spalten (Taktart-Dropdown | Raster), zwei Zeilen (Notenspur |
+   Zählzeiten-Zahlen) - die Taktart sitzt dadurch direkt vor dem ersten Feld
+   im Raster, wie eine echte Taktvorzeichnung am Anfang der Notenzeile, und
+   die Zählzeiten-Zahlen bleiben exakt unter der Notenspur (nicht auch unter
+   dem Dropdown) ausgerichtet. */
 .track-column {
   flex: 1 1 auto;
   min-width: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 8px;
+  align-items: stretch;
 }
+
+.time-sig-select {
+  grid-column: 1;
+  grid-row: 1 / 3;
+  align-self: center;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--ink);
+  background: var(--paper-alt);
+  border: 2px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 4px;
+  cursor: pointer;
+}
+
+.slot-track { grid-column: 2; grid-row: 1; }
+.beat-labels { grid-column: 2; grid-row: 2; }
 
 .measure-repeat {
   flex: 0 0 auto;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   gap: 4px;
-  padding: 4px 8px;
+  padding: 8px 10px;
   background: var(--paper-alt);
   border: 2px solid var(--line);
   border-radius: 8px;
   cursor: default;
 }
-.measure-repeat input[type="number"] {
-  width: 40px;
+.measure-repeat span { font-size: 0.75rem; color: #6b6b6b; white-space: nowrap; }
+.measure-repeat select {
   font-size: 1rem;
   padding: 4px;
   border-radius: 6px;
   border: 1px solid var(--line);
   text-align: center;
 }
-.measure-repeat span { font-size: 0.9rem; color: #6b6b6b; }
 
 /* Auf schmalen Bildschirmen (Hochformat Handy) reicht die Breite nicht für
    Raster + Wiederholungen-Feld nebeneinander - das Feld rutscht dann unter
@@ -464,6 +472,7 @@ main {
   }
   .measure-repeat {
     flex: 1 1 100%;
+    flex-direction: row;
     justify-content: center;
   }
 }
@@ -654,6 +663,17 @@ main {
   opacity: 0.85;
 }
 .insert-preview .icon { opacity: 0.6; }
+
+/* Wird verwendet, wenn hinter der letzten Note noch freier Raum liegt und
+   dort gedroppt wird (Lücke davor wird beim Ablegen mit Pausen aufgefüllt) -
+   die Vorschau muss dann exakt an der Ziel-Zählzeit stehen, nicht einfach
+   direkt hinter die letzte Note gepackt werden. */
+.insert-preview-absolute {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 3;
+}
 
 /* Ohne display:flex fehlt den beiden .eighth-half-Hälften (die sich sonst
    auf den flex-Kontext von .placed-note-pair verlassen) ihr Nebeneinander -

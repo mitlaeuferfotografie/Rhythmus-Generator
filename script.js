@@ -278,18 +278,12 @@ function renderMeasure(measure, index) {
   }[status];
 
   header.innerHTML = `
-    <button class="time-sig-btn" title="Taktart ändern (4/4, 3/4, 6/8)">
-      <span class="ts-num">${ts.top}</span><span class="ts-num">${ts.bottom}</span>
-    </button>
     <span class="measure-title">Takt ${index + 1}</span>
     <span class="measure-status">${statusText}</span>
     <button class="measure-remove" title="Takt entfernen">×</button>
   `;
   header.querySelector('.measure-remove').addEventListener('click', () => {
     removeMeasure(measure.id);
-  });
-  header.querySelector('.time-sig-btn').addEventListener('click', () => {
-    cycleTimeSignature(measure.id);
   });
 
   const track = document.createElement('div');
@@ -321,23 +315,35 @@ function renderMeasure(measure, index) {
   beatLabels.style.gridTemplateColumns = `repeat(${ts.labels.length}, 1fr)`;
   beatLabels.innerHTML = ts.labels.map((l) => `<span>${l}</span>`).join('');
 
+  // Taktart-Auswahl sitzt direkt VOR dem ersten Feld im Raster (wie eine
+  // echte Taktvorzeichnung am Anfang der Notenzeile) statt oben im Kopf.
+  const timeSigSelect = document.createElement('select');
+  timeSigSelect.className = 'time-sig-select';
+  timeSigSelect.title = 'Taktart';
+  timeSigSelect.innerHTML = TIME_SIGNATURE_CYCLE.map((key) => `<option value="${key}"${key === measure.timeSignature ? ' selected' : ''}>${key}</option>`).join('');
+  timeSigSelect.addEventListener('change', () => {
+    measure.timeSignature = timeSigSelect.value;
+    renderMeasures();
+  });
+
   const trackColumn = document.createElement('div');
   trackColumn.className = 'track-column';
+  trackColumn.appendChild(timeSigSelect);
   trackColumn.appendChild(track);
   trackColumn.appendChild(beatLabels);
 
   const repeatLabel = document.createElement('label');
   repeatLabel.className = 'measure-repeat';
-  repeatLabel.title = 'Wie oft dieser Takt wiederholt wird';
-  repeatLabel.innerHTML = `
-    <input type="number" min="1" max="50" value="${measure.repeatCount}">
-    <span>×</span>
-  `;
-  repeatLabel.querySelector('input').addEventListener('change', (e) => {
-    const value = Math.max(1, Math.min(50, Math.round(Number(e.target.value)) || 1));
-    e.target.value = value;
-    measure.repeatCount = value;
+  repeatLabel.title = 'Wie oft dieser Takt hintereinander wiederholt wird, bevor der nächste Takt beginnt';
+  const repeatSelect = document.createElement('select');
+  repeatSelect.innerHTML = Array.from({ length: 50 }, (_, i) => i + 1)
+    .map((n) => `<option value="${n}"${n === measure.repeatCount ? ' selected' : ''}>${n}</option>`)
+    .join('');
+  repeatSelect.addEventListener('change', () => {
+    measure.repeatCount = Number(repeatSelect.value);
   });
+  repeatLabel.innerHTML = '<span>Wiederholungen</span>';
+  repeatLabel.appendChild(repeatSelect);
 
   const body = document.createElement('div');
   body.className = 'measure-body';
@@ -353,14 +359,6 @@ function renderMeasure(measure, index) {
   });
 
   return wrap;
-}
-
-function cycleTimeSignature(measureId) {
-  const measure = state.measures.find((m) => m.id === measureId);
-  if (!measure) return;
-  const idx = TIME_SIGNATURE_CYCLE.indexOf(measure.timeSignature);
-  measure.timeSignature = TIME_SIGNATURE_CYCLE[(idx + 1) % TIME_SIGNATURE_CYCLE.length];
-  renderMeasures();
 }
 
 // Zwei direkt aufeinanderfolgende einzelne Achtel werden als verbundenes
@@ -592,27 +590,39 @@ function updateDragVisuals(clientX, clientY) {
   track.classList.add('drag-over');
 
   const excludeNoteId = drag.kind === 'move' ? drag.noteId : null;
-  const { referenceEl } = computeDropIndex(track, clientX, excludeNoteId);
+  const { index, referenceEl } = computeDropIndex(track, clientX, excludeNoteId);
 
   const measure = state.measures.find((m) => m.id === track.dataset.measureId);
   const capacity = timeSigOf(measure).units;
+  const { gapUnits, unitsBeforeIndex } = computeAppendGapFiller(measure, excludeNoteId, index, capacity, track, clientX);
 
   const pct = unitsToPercent(drag.units, capacity);
   const preview = document.createElement('div');
   preview.className = `insert-preview${drag.isPair ? ' insert-preview-pair' : ''}`;
-  preview.style.width = `${pct}%`;
-  preview.style.flex = `0 0 ${pct}%`;
   preview.innerHTML = drag.innerHtml;
 
-  const insertBeforeEl = topLevelChildOf(track, referenceEl);
-  if (insertBeforeEl) track.insertBefore(preview, insertBeforeEl);
-  else track.appendChild(preview);
+  if (gapUnits > 0) {
+    // Landet NACH einer Lücke (frei liegendes Feld weiter hinten im Takt) -
+    // Vorschau exakt an der Ziel-Zählzeit zeigen statt einfach hinter die
+    // letzte Note zu packen, sonst würde die Note beim Loslassen woanders
+    // erscheinen, als sie während des Ziehens angezeigt wurde.
+    preview.classList.add('insert-preview-absolute');
+    preview.style.left = `${unitsToPercent(unitsBeforeIndex + gapUnits, capacity)}%`;
+    preview.style.width = `${pct}%`;
+    track.appendChild(preview);
+  } else {
+    preview.style.width = `${pct}%`;
+    preview.style.flex = `0 0 ${pct}%`;
+    const insertBeforeEl = topLevelChildOf(track, referenceEl);
+    if (insertBeforeEl) track.insertBefore(preview, insertBeforeEl);
+    else track.appendChild(preview);
+  }
 
   const existingUnits = measure.notes.reduce(
     (sum, n) => sum + (n.id === excludeNoteId ? 0 : noteType(n.typeId).units),
     0
   );
-  const wouldBeUnits = existingUnits + drag.units;
+  const wouldBeUnits = existingUnits + gapUnits + drag.units;
   track.closest('.measure').classList.toggle('preview-overfull', wouldBeUnits > capacity);
 }
 
@@ -668,14 +678,22 @@ function onDragEnd(e) {
 
   if (track) {
     const measureId = track.dataset.measureId;
-    const { index } = computeDropIndex(track, e.clientX, drag.kind === 'move' ? drag.noteId : null);
+    const excludeNoteId = drag.kind === 'move' ? drag.noteId : null;
+    const { index } = computeDropIndex(track, e.clientX, excludeNoteId);
+    const measure = state.measures.find((m) => m.id === measureId);
+    const capacity = timeSigOf(measure).units;
+    const { fillerNotes } = computeAppendGapFiller(measure, excludeNoteId, index, capacity, track, e.clientX);
 
     if (drag.kind === 'new') {
+      let insertAt = index;
+      fillerNotes.forEach((filler, i) => insertNote(measureId, insertAt + i, filler));
+      insertAt += fillerNotes.length;
+
       if (drag.paletteItem.kind === 'pair') {
-        insertNote(measureId, index, { id: uid('n'), typeId: 'eighth' });
-        insertNote(measureId, index + 1, { id: uid('n'), typeId: 'eighth' });
+        insertNote(measureId, insertAt, { id: uid('n'), typeId: 'eighth' });
+        insertNote(measureId, insertAt + 1, { id: uid('n'), typeId: 'eighth' });
       } else {
-        insertNote(measureId, index, { id: uid('n'), typeId: drag.paletteItem.typeId });
+        insertNote(measureId, insertAt, { id: uid('n'), typeId: drag.paletteItem.typeId });
       }
     } else if (drag.kind === 'move') {
       const loc = findNoteLocation(drag.noteId);
@@ -686,6 +704,8 @@ function onDragEnd(e) {
         // Index ggf. korrigieren, falls im selben Takt vor der alten Position entfernt wurde
         let insertAt = index;
         if (loc.measure.id === measureId && loc.index < index) insertAt -= 1;
+        fillerNotes.forEach((filler, i) => insertNote(measureId, insertAt + i, filler));
+        insertAt += fillerNotes.length;
         targetMeasure.notes.splice(insertAt, 0, note);
       }
     }
@@ -743,6 +763,50 @@ function computeDropIndex(track, clientX, excludeNoteId) {
     }
   }
   return { index, referenceEl };
+}
+
+// Zählzeit, auf die der Cursor gerade zeigt (0..capacity), unabhängig davon,
+// ob dort schon eine Note liegt - Grundlage dafür, dass eine Note wirklich
+// dort landet, wo man sie hinzieht, statt immer nur direkt hinter die
+// letzte vorhandene Note gepackt zu werden.
+function targetUnitFromX(track, clientX, capacity) {
+  const rect = track.getBoundingClientRect();
+  const relativeX = Math.max(0, Math.min(rect.width, clientX - rect.left));
+  return Math.min(capacity, Math.round((relativeX / rect.width) * capacity));
+}
+
+const FILLER_REST_TYPE_IDS = ['wholeRest', 'halfRest', 'quarterRest', 'eighthRest'];
+
+// Füllt eine Lücke (in units) mit möglichst wenigen Pausen auf - größte
+// zuerst, genau wie beim Notieren "von Hand". 1 unit (Achtelpause) deckt
+// jeden verbleibenden Rest ab, die Lücke geht also immer restlos auf.
+function fillerRestsForGap(gapUnits) {
+  const notes = [];
+  let remaining = gapUnits;
+  FILLER_REST_TYPE_IDS.forEach((typeId) => {
+    const units = noteType(typeId).units;
+    while (remaining >= units) {
+      notes.push({ id: uid('n'), typeId });
+      remaining -= units;
+    }
+  });
+  return notes;
+}
+
+// Wird nach der letzten vorhandenen Note in freien Raum gedroppt (Index ==
+// Anzahl vorhandener Noten, also kein Einfügen ZWISCHEN zwei Noten),
+// bestimmt das die Ziel-Zählzeit aus der Cursor-Position und liefert die
+// Pausen, die die Lücke bis dahin auffüllen - leer, wenn direkt angrenzend
+// (dann verhält es sich wie vorher: einfach anhängen, keine Lücke).
+function computeAppendGapFiller(measure, excludeNoteId, index, capacity, track, clientX) {
+  const notesExcl = measure.notes.filter((n) => n.id !== excludeNoteId);
+  if (index !== notesExcl.length) {
+    return { gapUnits: 0, fillerNotes: [], unitsBeforeIndex: null };
+  }
+  const unitsBeforeIndex = notesExcl.reduce((sum, n) => sum + noteType(n.typeId).units, 0);
+  const targetUnit = targetUnitFromX(track, clientX, capacity);
+  const gapUnits = Math.max(0, targetUnit - unitsBeforeIndex);
+  return { gapUnits, fillerNotes: fillerRestsForGap(gapUnits), unitsBeforeIndex };
 }
 
 /* ============================================================
