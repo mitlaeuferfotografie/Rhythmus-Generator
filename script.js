@@ -72,10 +72,13 @@ const NOTE_TYPES = [
     units: 1,
     isRest: false,
     // Einzelne, unverbundene Achtel bekommt ein Fähnchen (Standard-Notation).
-    // Als geschlossene, gefüllte Fläche gezeichnet (nicht nur ein Strich),
-    // die sich deutlich vom Notenhals löst - sonst verschmilzt sie optisch
-    // mit dem Hals und ist kaum als eigenes Fähnchen erkennbar.
-    icon: `<svg viewBox="0 0 40 56"><ellipse cx="16" cy="46" rx="11" ry="7.5" transform="rotate(-15 16 46)" fill="#1a1a1a" stroke="#1a1a1a" stroke-width="3.5"/><line x1="26" y1="43" x2="26" y2="3" stroke="#1a1a1a" stroke-width="3.5"/><path d="M26 3 C34 5 37 12 32 18 C30.5 20 29 18.5 29 16 C31 13 30 8 26 6 Z" fill="#1a1a1a"/></svg>`,
+    // Form/Proportion 1:1 von der echten Wikimedia-Referenzglyphe
+    // "Figure_rythmique_croche_hampe_haut.svg" (selbe Zeichner-Familie wie
+    // die Viertel-Referenz) übernommen und nur auf unseren Notenhals
+    // skaliert - das Fähnchen reicht dadurch (wie im Original) deutlich
+    // weiter am Hals herunter, statt wie vorher ein kleiner, kurzer Haken
+    // direkt an der Spitze zu sein.
+    icon: `<svg viewBox="0 0 40 56"><ellipse cx="16" cy="46" rx="11" ry="7.5" transform="rotate(-15 16 46)" fill="#1a1a1a" stroke="#1a1a1a" stroke-width="3.5"/><line x1="26" y1="43" x2="26" y2="3" stroke="#1a1a1a" stroke-width="3.5"/><path d="M26 4.1 C25.3 11.7 31.8 14.4 34.9 17.8 C37.9 21.2 39 25 38.9 28.5 C38.9 29.5 38.6 33.7 35.8 37.8 C39.6 27.4 36.1 23.2 32.6 19.9 C28.5 15.8 25.4 12.1 26 4.1 Z" fill="#1a1a1a"/></svg>`,
   },
   {
     id: 'wholeRest',
@@ -1263,6 +1266,11 @@ function stop() {
   state.isPlaying = false;
   playPauseBtn.textContent = '▶ Abspielen';
   playPauseBtn.classList.remove('is-playing');
+  // Während des Abspielens live editierte Takte können jetzt unvollständig
+  // sein (der Button blieb dafür bewusst klickbar, um stoppen zu können) -
+  // nach dem Stopp muss der deaktiviert/grau-Status also neu bewertet
+  // werden, sonst bliebe "Abspielen" fälschlich grün+klickbar.
+  updatePlayAvailability();
 }
 
 /* ============================================================
