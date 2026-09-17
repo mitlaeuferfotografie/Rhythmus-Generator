@@ -160,17 +160,33 @@ function newMeasure() {
   return { id: uid('m'), notes: [], timeSignature: '4/4', repeatCount: 4 };
 }
 
+// Summe der tatsächlich belegten Achtel-Einheiten (unabhängig von Lücken -
+// eine Note, die weiter hinten im Takt liegt, zählt trotzdem nur mit ihrer
+// eigenen Dauer, nicht mit dem Platz davor).
 function measureUnits(measure) {
   return measure.notes.reduce((sum, n) => sum + noteType(n.typeId).units, 0);
 }
 
+// Wie weit die am weitesten hinten liegende Note reicht (startUnit + Dauer).
+// Zusammen mit measureUnits() ergibt das: reichen beide bis exakt zur
+// Kapazität UND sind sie gleich groß, gibt es keine Lücke -> "voll". Reicht
+// die letzte Note über die Kapazität hinaus -> "übervoll", ganz unabhängig
+// davon, ob davor noch Lücken offen sind.
+function measureExtent(measure, excludeNoteId) {
+  return measure.notes.reduce((max, n) => {
+    if (n.id === excludeNoteId) return max;
+    return Math.max(max, n.startUnit + noteType(n.typeId).units);
+  }, 0);
+}
+
 function measureStatus(measure) {
   const units = measureUnits(measure);
-  const capacity = timeSigOf(measure).units;
   if (units === 0) return 'leer';
-  if (units < capacity) return 'offen';
-  if (units === capacity) return 'voll';
-  return 'uebervoll';
+  const capacity = timeSigOf(measure).units;
+  const extent = measureExtent(measure, null);
+  if (extent > capacity) return 'uebervoll';
+  if (units === capacity && extent === capacity) return 'voll';
+  return 'offen';
 }
 
 function anyMeasureOverfull() {
@@ -185,16 +201,14 @@ function formatMeasureFill(units, measure) {
   return Number.isInteger(beats) ? String(beats) : beats.toFixed(1);
 }
 
-// Reihenfolge + Startposition (in Achtel-Einheiten) jeder Note im Takt -
-// wird gebraucht, um benachbarte Achtel zu einem Balkenpaar zu gruppieren.
+// Noten tragen ihre Position (startUnit) jetzt explizit - Lücken sind damit
+// einfach unbelegter Raum, keine echten Pausen. Für die Anzeige/Balken-
+// Erkennung nach Position sortiert zurückgeben.
 function layoutNotes(measure) {
-  let cursor = 0;
-  return measure.notes.map((note) => {
-    const type = noteType(note.typeId);
-    const entry = { note, type, start: cursor };
-    cursor += type.units;
-    return entry;
-  });
+  return measure.notes
+    .slice()
+    .sort((a, b) => a.startUnit - b.startUnit)
+    .map((note) => ({ note, type: noteType(note.typeId), start: note.startUnit }));
 }
 
 function formatBeats(units) {
@@ -380,10 +394,10 @@ function renderMeasureNotes(track, measure) {
       next.start === cur.start + 1;
 
     if (canPair) {
-      track.appendChild(renderEighthPair(cur.note, next.note, capacity));
+      track.appendChild(renderEighthPair(cur.note, next.note, capacity, cur.start));
       i += 2;
     } else {
-      track.appendChild(renderPlacedNote(cur.note, cur.type, capacity));
+      track.appendChild(renderPlacedNote(cur.note, cur.type, capacity, cur.start));
       i += 1;
     }
   }
@@ -402,13 +416,13 @@ function attachNoteInteractions(el, noteId) {
   });
 }
 
-function renderPlacedNote(note, type, capacity) {
+function renderPlacedNote(note, type, capacity, startUnit) {
   const pct = unitsToPercent(type.units, capacity);
   const el = document.createElement('div');
   el.className = 'placed-note';
   el.dataset.noteId = note.id;
+  el.style.left = `${unitsToPercent(startUnit, capacity)}%`;
   el.style.width = `${pct}%`;
-  el.style.flex = `0 0 ${pct}%`;
   el.style.setProperty('--anchor-pct', anchorPercent(type.units));
   el.innerHTML = `
     <span class="icon">${type.icon}</span>
@@ -423,13 +437,13 @@ function renderPlacedNote(note, type, capacity) {
 // eine einzelne Grafik zu verzerren. Jede Hälfte bleibt einzeln greifbar/
 // löschbar (eigene note-id), sitzt aber ohne eigenen Rahmen in einer
 // gemeinsamen Karte, damit es wie EIN Notenblock aussieht.
-function renderEighthPair(noteA, noteB, capacity) {
+function renderEighthPair(noteA, noteB, capacity, startUnit) {
   const pct = unitsToPercent(2, capacity);
   const beamedIcon = noteType('quarter').icon;
   const el = document.createElement('div');
   el.className = 'placed-note-pair';
+  el.style.left = `${unitsToPercent(startUnit, capacity)}%`;
   el.style.width = `${pct}%`;
-  el.style.flex = `0 0 ${pct}%`;
   el.innerHTML = `
     <div class="eighth-half" data-note-id="${noteA.id}">
       <span class="icon">${beamedIcon}</span>
@@ -466,10 +480,13 @@ function deleteNote(noteId) {
   renderMeasures();
 }
 
-function insertNote(measureId, index, note) {
+// Reihenfolge im Array spielt keine Rolle mehr (jede Note trägt ihre
+// Position über startUnit) - einfach anhängen, die Anzeige sortiert beim
+// Rendern selbst danach, wo die Note tatsächlich liegt.
+function addNoteToMeasure(measureId, note) {
   const measure = state.measures.find((m) => m.id === measureId);
   if (!measure) return;
-  measure.notes.splice(index, 0, note);
+  measure.notes.push(note);
 }
 
 function addMeasure() {
@@ -589,41 +606,22 @@ function updateDragVisuals(clientX, clientY) {
   if (!track) return;
   track.classList.add('drag-over');
 
-  const excludeNoteId = drag.kind === 'move' ? drag.noteId : null;
-  const { index, referenceEl } = computeDropIndex(track, clientX, excludeNoteId);
-
   const measure = state.measures.find((m) => m.id === track.dataset.measureId);
   const capacity = timeSigOf(measure).units;
-  const { gapUnits, unitsBeforeIndex } = computeAppendGapFiller(measure, excludeNoteId, index, capacity, track, clientX);
+  const excludeNoteId = drag.kind === 'move' ? drag.noteId : null;
+
+  const targetUnit = pushPastOverlaps(measure, excludeNoteId, targetUnitFromX(track, clientX, capacity), drag.units);
 
   const pct = unitsToPercent(drag.units, capacity);
   const preview = document.createElement('div');
   preview.className = `insert-preview${drag.isPair ? ' insert-preview-pair' : ''}`;
   preview.innerHTML = drag.innerHtml;
+  preview.style.left = `${unitsToPercent(targetUnit, capacity)}%`;
+  preview.style.width = `${pct}%`;
+  track.appendChild(preview);
 
-  if (gapUnits > 0) {
-    // Landet NACH einer Lücke (frei liegendes Feld weiter hinten im Takt) -
-    // Vorschau exakt an der Ziel-Zählzeit zeigen statt einfach hinter die
-    // letzte Note zu packen, sonst würde die Note beim Loslassen woanders
-    // erscheinen, als sie während des Ziehens angezeigt wurde.
-    preview.classList.add('insert-preview-absolute');
-    preview.style.left = `${unitsToPercent(unitsBeforeIndex + gapUnits, capacity)}%`;
-    preview.style.width = `${pct}%`;
-    track.appendChild(preview);
-  } else {
-    preview.style.width = `${pct}%`;
-    preview.style.flex = `0 0 ${pct}%`;
-    const insertBeforeEl = topLevelChildOf(track, referenceEl);
-    if (insertBeforeEl) track.insertBefore(preview, insertBeforeEl);
-    else track.appendChild(preview);
-  }
-
-  const existingUnits = measure.notes.reduce(
-    (sum, n) => sum + (n.id === excludeNoteId ? 0 : noteType(n.typeId).units),
-    0
-  );
-  const wouldBeUnits = existingUnits + gapUnits + drag.units;
-  track.closest('.measure').classList.toggle('preview-overfull', wouldBeUnits > capacity);
+  const extent = Math.max(measureExtent(measure, excludeNoteId), targetUnit + drag.units);
+  track.closest('.measure').classList.toggle('preview-overfull', extent > capacity);
 }
 
 // Auto-Scroll beim Ziehen: kommt der Finger/Cursor nah an den oberen oder
@@ -664,49 +662,31 @@ function stopAutoScroll() {
   autoScrollRAF = null;
 }
 
-// Läuft von einem Nachfahren (z. B. .eighth-half) zum direkten Kind von
-// `track` hoch, damit insertBefore ein gültiges Referenz-Element bekommt.
-function topLevelChildOf(track, el) {
-  let node = el;
-  while (node && node.parentElement !== track) node = node.parentElement;
-  return node;
-}
-
 function onDragEnd(e) {
   if (!drag) return;
   const track = trackUnderPoint(e.clientX, e.clientY);
 
   if (track) {
     const measureId = track.dataset.measureId;
-    const excludeNoteId = drag.kind === 'move' ? drag.noteId : null;
-    const { index } = computeDropIndex(track, e.clientX, excludeNoteId);
     const measure = state.measures.find((m) => m.id === measureId);
     const capacity = timeSigOf(measure).units;
-    const { fillerNotes } = computeAppendGapFiller(measure, excludeNoteId, index, capacity, track, e.clientX);
+    const excludeNoteId = drag.kind === 'move' ? drag.noteId : null;
+    const targetUnit = pushPastOverlaps(measure, excludeNoteId, targetUnitFromX(track, e.clientX, capacity), drag.units);
 
     if (drag.kind === 'new') {
-      let insertAt = index;
-      fillerNotes.forEach((filler, i) => insertNote(measureId, insertAt + i, filler));
-      insertAt += fillerNotes.length;
-
       if (drag.paletteItem.kind === 'pair') {
-        insertNote(measureId, insertAt, { id: uid('n'), typeId: 'eighth' });
-        insertNote(measureId, insertAt + 1, { id: uid('n'), typeId: 'eighth' });
+        addNoteToMeasure(measureId, { id: uid('n'), typeId: 'eighth', startUnit: targetUnit });
+        addNoteToMeasure(measureId, { id: uid('n'), typeId: 'eighth', startUnit: targetUnit + 1 });
       } else {
-        insertNote(measureId, insertAt, { id: uid('n'), typeId: drag.paletteItem.typeId });
+        addNoteToMeasure(measureId, { id: uid('n'), typeId: drag.paletteItem.typeId, startUnit: targetUnit });
       }
     } else if (drag.kind === 'move') {
       const loc = findNoteLocation(drag.noteId);
       if (loc) {
         const note = loc.measure.notes[loc.index];
         loc.measure.notes.splice(loc.index, 1);
-        const targetMeasure = state.measures.find((m) => m.id === measureId);
-        // Index ggf. korrigieren, falls im selben Takt vor der alten Position entfernt wurde
-        let insertAt = index;
-        if (loc.measure.id === measureId && loc.index < index) insertAt -= 1;
-        fillerNotes.forEach((filler, i) => insertNote(measureId, insertAt + i, filler));
-        insertAt += fillerNotes.length;
-        targetMeasure.notes.splice(insertAt, 0, note);
+        note.startUnit = targetUnit;
+        addNoteToMeasure(measureId, note);
       }
     }
   } else if (drag.kind === 'move') {
@@ -740,73 +720,40 @@ function trackUnderPoint(x, y) {
   return el ? el.closest('.slot-track') : null;
 }
 
-function computeDropIndex(track, clientX, excludeNoteId) {
-  const rect = track.getBoundingClientRect();
-  const relativeX = clientX - rect.left;
-  // [data-note-id] matcht sowohl einzelne Noten (.placed-note) als auch
-  // jede Hälfte eines Achtelpaars (.eighth-half) - eine echte Note pro
-  // Eintrag, unabhängig davon, wie sie gerade gruppiert dargestellt wird.
-  const items = Array.from(track.querySelectorAll('[data-note-id]')).filter(
-    (el) => el.dataset.noteId !== excludeNoteId
-  );
-
-  let index = items.length;
-  let referenceEl = null;
-
-  for (let i = 0; i < items.length; i++) {
-    const itemRect = items[i].getBoundingClientRect();
-    const mid = itemRect.left - rect.left + itemRect.width / 2;
-    if (relativeX < mid) {
-      index = i;
-      referenceEl = items[i];
-      break;
-    }
-  }
-  return { index, referenceEl };
-}
-
-// Zählzeit, auf die der Cursor gerade zeigt (0..capacity), unabhängig davon,
-// ob dort schon eine Note liegt - Grundlage dafür, dass eine Note wirklich
-// dort landet, wo man sie hinzieht, statt immer nur direkt hinter die
-// letzte vorhandene Note gepackt zu werden.
+// Zählzeit, auf die der Cursor gerade zeigt (0..capacity) - das ist die
+// Einheit, ÜBER der der Cursor steht (floor), nicht die nächstgelegene
+// Grenze (round). Bei round() würde man schon in der ersten Hälfte einer
+// Einheit zur NÄCHSTEN vorspringen, was sich als "landet eher rechts als
+// links" bemerkbar macht; floor() bleibt, solange man irgendwo innerhalb
+// der Einheit steht, konsequent bei dieser Einheit.
 function targetUnitFromX(track, clientX, capacity) {
   const rect = track.getBoundingClientRect();
-  const relativeX = Math.max(0, Math.min(rect.width, clientX - rect.left));
-  return Math.min(capacity, Math.round((relativeX / rect.width) * capacity));
+  const relativeX = Math.max(0, Math.min(rect.width - 0.01, clientX - rect.left));
+  return Math.max(0, Math.min(capacity, Math.floor((relativeX / rect.width) * capacity)));
 }
 
-const FILLER_REST_TYPE_IDS = ['wholeRest', 'halfRest', 'quarterRest', 'eighthRest'];
+// Jede Note trägt jetzt ihre Position (startUnit) explizit - Lücken bleiben
+// dadurch einfach unbelegter Raum (keine automatisch erzeugten Pausen).
+// Würde die Ziel-Position eine vorhandene Note überlappen, rutscht sie
+// direkt danach weiter (wiederholt, falls dort gleich die nächste anliegt).
+function pushPastOverlaps(measure, excludeNoteId, targetUnit, units) {
+  const others = measure.notes
+    .filter((n) => n.id !== excludeNoteId)
+    .map((n) => ({ start: n.startUnit, end: n.startUnit + noteType(n.typeId).units }))
+    .sort((a, b) => a.start - b.start);
 
-// Füllt eine Lücke (in units) mit möglichst wenigen Pausen auf - größte
-// zuerst, genau wie beim Notieren "von Hand". 1 unit (Achtelpause) deckt
-// jeden verbleibenden Rest ab, die Lücke geht also immer restlos auf.
-function fillerRestsForGap(gapUnits) {
-  const notes = [];
-  let remaining = gapUnits;
-  FILLER_REST_TYPE_IDS.forEach((typeId) => {
-    const units = noteType(typeId).units;
-    while (remaining >= units) {
-      notes.push({ id: uid('n'), typeId });
-      remaining -= units;
+  let start = targetUnit;
+  let moved = true;
+  while (moved) {
+    moved = false;
+    for (const o of others) {
+      if (start < o.end && start + units > o.start) {
+        start = o.end;
+        moved = true;
+      }
     }
-  });
-  return notes;
-}
-
-// Wird nach der letzten vorhandenen Note in freien Raum gedroppt (Index ==
-// Anzahl vorhandener Noten, also kein Einfügen ZWISCHEN zwei Noten),
-// bestimmt das die Ziel-Zählzeit aus der Cursor-Position und liefert die
-// Pausen, die die Lücke bis dahin auffüllen - leer, wenn direkt angrenzend
-// (dann verhält es sich wie vorher: einfach anhängen, keine Lücke).
-function computeAppendGapFiller(measure, excludeNoteId, index, capacity, track, clientX) {
-  const notesExcl = measure.notes.filter((n) => n.id !== excludeNoteId);
-  if (index !== notesExcl.length) {
-    return { gapUnits: 0, fillerNotes: [], unitsBeforeIndex: null };
   }
-  const unitsBeforeIndex = notesExcl.reduce((sum, n) => sum + noteType(n.typeId).units, 0);
-  const targetUnit = targetUnitFromX(track, clientX, capacity);
-  const gapUnits = Math.max(0, targetUnit - unitsBeforeIndex);
-  return { gapUnits, fillerNotes: fillerRestsForGap(gapUnits), unitsBeforeIndex };
+  return start;
 }
 
 /* ============================================================
@@ -925,6 +872,11 @@ function buildTimeline() {
   state.measures.forEach((measure) => {
     const ts = timeSigOf(measure);
     const repeatCount = Math.max(1, Math.min(50, Math.round(measure.repeatCount) || 1));
+    // Jede Note trägt ihre eigene Position (startUnit) - Lücken erzeugen
+    // hier einfach keinen Event, statt übersprungen werden zu müssen. Die
+    // Reichweite pro Durchlauf ist mindestens die Kapazität, oder mehr,
+    // falls der Takt übervoll ist.
+    const extent = Math.max(ts.units, measureExtent(measure, null));
 
     for (let rep = 0; rep < repeatCount; rep++) {
       const measureStartUnits = cursorUnits;
@@ -933,14 +885,10 @@ function buildTimeline() {
 
       measure.notes.forEach((note) => {
         const type = noteType(note.typeId);
-        noteEvents.push({ unit: cursorUnits, note, type, measureId: measure.id });
-        cursorUnits += type.units;
+        noteEvents.push({ unit: measureStartUnits + note.startUnit, note, type, measureId: measure.id });
       });
 
-      const measureUsedUnits = cursorUnits - measureStartUnits;
-      if (measureUsedUnits < ts.units) {
-        cursorUnits = measureStartUnits + ts.units;
-      }
+      cursorUnits = measureStartUnits + extent;
     }
   });
 

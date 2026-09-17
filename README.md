@@ -18,10 +18,11 @@ Viertelnote.
 
 - Notenwerte-Palette liegt oben (Noten links, Pausen rechts) und bleibt beim
   Scrollen sichtbar. Karte in einen Takt ziehen; während des Ziehens zeigt
-  eine Live-Vorschau schon die echte Feldgröße im Takt. Eine Note landet
-  dabei exakt an der Zählzeit, an der man sie ablegt – eine Lücke davor
-  (z. B. wenn zuerst Zählzeit 4 belegt wird) wird automatisch mit den
-  passenden Pausen aufgefüllt.
+  eine Live-Vorschau schon die echte Feldgröße an der Ziel-Zählzeit. Eine
+  Note landet dabei exakt dort, wo man sie ablegt – auch wenn davor noch
+  nichts liegt (z. B. direkt auf Zählzeit 4 ziehen, ohne 1-3 erst zu
+  belegen). Die Felder davor bleiben dann einfach leer, statt automatisch
+  mit Pausen aufgefüllt zu werden.
 - Bereits platzierte Noten lassen sich innerhalb eines Takts oder in einen
   anderen Takt verschieben; aus dem Raster herausziehen entfernt sie.
 - Kleines "×" auf einer Note entfernt sie direkt.

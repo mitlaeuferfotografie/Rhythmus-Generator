@@ -539,6 +539,17 @@ main {
   align-self: stretch;
 }
 
+/* Im Raster hat jede Note jetzt eine feste Position (startUnit) statt in
+   einer lückenlosen Reihe zu fließen - deshalb absolut statt per flex
+   nebeneinander gereiht. Nur für die ECHTEN, im Takt liegenden Noten (nicht
+   für den Drag-Ghost oder die Live-Vorschau, die ihre Höhe anders lösen). */
+.slot-track > .placed-note,
+.slot-track > .placed-note-pair {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+
 .placed-note.playing {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(47,111,237,0.35);
@@ -650,30 +661,22 @@ main {
   box-shadow: inset 0 0 0 2px var(--accent);
 }
 
-/* Live-Vorschau während des Ziehens: zeigt die Note schon in ihrer echten
-   Feld-Breite an der Stelle, an der sie landen würde, und schiebt die
-   anderen Noten dafür sichtbar zur Seite - so ist auf einen Blick klar, wie
-   viel Platz noch da ist und ob sie überhaupt passt. */
+/* Live-Vorschau während des Ziehens: zeigt schon an der Ziel-Zählzeit die
+   echte Feldgröße, exakt dort, wo die Note beim Loslassen landen würde -
+   absolut positioniert (wie die echten Noten im Raster), damit sie an
+   jeder beliebigen freien Stelle stehen kann, nicht nur direkt anschließend
+   an eine vorhandene Note. */
 .insert-preview {
-  position: relative;
-  align-self: stretch;
+  position: absolute;
+  top: 0;
+  bottom: 0;
   border: 2px dashed var(--accent);
   border-radius: 8px;
   background: rgba(47, 111, 237, 0.08);
   opacity: 0.85;
-}
-.insert-preview .icon { opacity: 0.6; }
-
-/* Wird verwendet, wenn hinter der letzten Note noch freier Raum liegt und
-   dort gedroppt wird (Lücke davor wird beim Ablegen mit Pausen aufgefüllt) -
-   die Vorschau muss dann exakt an der Ziel-Zählzeit stehen, nicht einfach
-   direkt hinter die letzte Note gepackt werden. */
-.insert-preview-absolute {
-  position: absolute;
-  top: 0;
-  bottom: 0;
   z-index: 3;
 }
+.insert-preview .icon { opacity: 0.6; }
 
 /* Ohne display:flex fehlt den beiden .eighth-half-Hälften (die sich sonst
    auf den flex-Kontext von .placed-note-pair verlassen) ihr Nebeneinander -
