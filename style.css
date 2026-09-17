@@ -713,7 +713,7 @@ main {
    bei jeder Bildschirmgröße exakt passt. */
 .beam-bar {
   position: absolute;
-  top: calc(50% - 15px);
+  top: calc(50% - 20px);
   left: calc(25% + 5.8px);
   width: 50%;
   height: 6px;

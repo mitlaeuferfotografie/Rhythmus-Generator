@@ -53,14 +53,18 @@ const NOTE_TYPES = [
     name: 'Halbe Note',
     units: 4,
     isRest: false,
-    icon: `<svg viewBox="0 0 40 48"><ellipse cx="16" cy="36" rx="11" ry="7.5" transform="rotate(-15 16 36)" fill="none" stroke="#1a1a1a" stroke-width="3.5"/><line x1="26" y1="33" x2="26" y2="6" stroke="#1a1a1a" stroke-width="3.5"/></svg>`,
+    // Notenhals-Länge (40) im Verhältnis zur Notenkopf-Höhe (~15.5) folgt
+    // dem realen Notationsstandard (~2,6:1, siehe Wikimedia-Referenzglyphe
+    // "Figure_rythmique_noire_hampe_haut.svg") statt der alten, zu kurzen
+    // Näherung (~1,8:1) - deshalb ist die viewBox jetzt höher (56 statt 48).
+    icon: `<svg viewBox="0 0 40 56"><ellipse cx="16" cy="46" rx="11" ry="7.5" transform="rotate(-15 16 46)" fill="none" stroke="#1a1a1a" stroke-width="3.5"/><line x1="26" y1="43" x2="26" y2="3" stroke="#1a1a1a" stroke-width="3.5"/></svg>`,
   },
   {
     id: 'quarter',
     name: 'Viertel Note',
     units: 2,
     isRest: false,
-    icon: `<svg viewBox="0 0 40 48"><ellipse cx="16" cy="36" rx="11" ry="7.5" transform="rotate(-15 16 36)" fill="#1a1a1a" stroke="#1a1a1a" stroke-width="3.5"/><line x1="26" y1="33" x2="26" y2="6" stroke="#1a1a1a" stroke-width="3.5"/></svg>`,
+    icon: `<svg viewBox="0 0 40 56"><ellipse cx="16" cy="46" rx="11" ry="7.5" transform="rotate(-15 16 46)" fill="#1a1a1a" stroke="#1a1a1a" stroke-width="3.5"/><line x1="26" y1="43" x2="26" y2="3" stroke="#1a1a1a" stroke-width="3.5"/></svg>`,
   },
   {
     id: 'eighth',
@@ -71,7 +75,7 @@ const NOTE_TYPES = [
     // Als geschlossene, gefüllte Fläche gezeichnet (nicht nur ein Strich),
     // die sich deutlich vom Notenhals löst - sonst verschmilzt sie optisch
     // mit dem Hals und ist kaum als eigenes Fähnchen erkennbar.
-    icon: `<svg viewBox="0 0 40 48"><ellipse cx="16" cy="36" rx="11" ry="7.5" transform="rotate(-15 16 36)" fill="#1a1a1a" stroke="#1a1a1a" stroke-width="3.5"/><line x1="26" y1="33" x2="26" y2="6" stroke="#1a1a1a" stroke-width="3.5"/><path d="M26 6 C34 8 37 15 32 21 C30.5 23 29 21.5 29 19 C31 16 30 11 26 9 Z" fill="#1a1a1a"/></svg>`,
+    icon: `<svg viewBox="0 0 40 56"><ellipse cx="16" cy="46" rx="11" ry="7.5" transform="rotate(-15 16 46)" fill="#1a1a1a" stroke="#1a1a1a" stroke-width="3.5"/><line x1="26" y1="43" x2="26" y2="3" stroke="#1a1a1a" stroke-width="3.5"/><path d="M26 3 C34 5 37 12 32 18 C30.5 20 29 18.5 29 16 C31 13 30 8 26 6 Z" fill="#1a1a1a"/></svg>`,
   },
   {
     id: 'wholeRest',
