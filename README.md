@@ -38,12 +38,17 @@ Viertelnote.
   sichtbar aus, statt einen Scrollbalken zu brauchen. "Abspielen" ist
   deaktiviert, solange nicht JEDER Takt genau voll ist (also bei leeren,
   offenen oder übervollen Takten) - erst wenn alle "Voll ✓" zeigen, geht's los.
+- "🎲 Zufall" im Takt-Kopf erzeugt einen zufälligen, aber garantiert
+  passenden Rhythmus für diesen Takt (füllt ihn komplett, meist Noten,
+  gelegentlich eine Pause für Abwechslung).
 - Im Takt-Kopf wählt ein Dropdown ("Wdh."), wie oft genau DIESER Takt
   wiederholt wird (Standard: 4, frei von 1 bis 50), bevor es mit dem
   nächsten Takt weitergeht; "×" direkt daneben entfernt den ganzen Takt.
 - Die Notenwerte-Palette (Noten/Pausen) skaliert Icon- und Schriftgröße
   automatisch so, dass jede der beiden Gruppen immer in maximal 2 Zeilen
-  passt, egal wie breit der Bildschirm ist.
+  passt, egal wie breit der Bildschirm ist - beide Gruppen bleiben dabei
+  gleich groß (an der jeweils engeren orientiert), auch wenn sie
+  unterschiedlich viele Spalten haben.
 - "Abspielen" spielt alle Takte der Reihe nach in der eingestellten
   Geschwindigkeit (Tempo-Regler) ab, jeden Takt so oft wie eingestellt
   direkt hintereinander; jede Note (auch jede einzelne Achtel) klingt für

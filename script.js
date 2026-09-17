@@ -257,7 +257,48 @@ function renderPalette() {
     card.addEventListener('pointerdown', (e) => startDragNew(e, item));
     (type.isRest ? paletteCardsRestsEl : paletteCardsNotesEl).appendChild(card);
   });
+
+  schedulePaletteSync();
 }
+
+// Noten- und Pausen-Gruppe haben unterschiedlich viele Spalten (5 Noten ->
+// 3, 4 Pausen -> 2) und dadurch bei gleicher Gesamtbreite unterschiedlich
+// breite Karten - die schmalere Gruppe (mehr Spalten) bekäme sonst kleinere
+// Icons/Schrift als die andere. Hier wird die tatsächlich gerenderte
+// Kartenbreite BEIDER Gruppen gemessen und die kleinere für BEIDE als
+// gemeinsame Referenz verwendet, damit Noten und Pausen immer gleich groß
+// aussehen.
+function syncPaletteCardSizes() {
+  const firstCardWidth = (container) => {
+    const card = container.querySelector('.note-card');
+    return card ? card.getBoundingClientRect().width : NaN;
+  };
+  const widths = [firstCardWidth(paletteCardsNotesEl), firstCardWidth(paletteCardsRestsEl)].filter(
+    (w) => Number.isFinite(w) && w > 0
+  );
+  if (widths.length === 0) return;
+  const refWidth = Math.min(...widths);
+
+  const scaled = (min, ratio, max) => `${Math.max(min, Math.min(max, refWidth * ratio))}px`;
+  const root = document.documentElement.style;
+  root.setProperty('--palette-icon-w', scaled(20, 0.34, 40));
+  root.setProperty('--palette-icon-h', scaled(24, 0.4, 48));
+  root.setProperty('--palette-name-size', scaled(9.6, 0.17, 15.2));
+  root.setProperty('--palette-beats-size', scaled(8.3, 0.14, 12.8));
+  root.setProperty('--palette-card-gap', scaled(4, 0.09, 10));
+  root.setProperty('--palette-card-pad-y', scaled(4, 0.08, 8));
+  root.setProperty('--palette-card-pad-x', scaled(6, 0.11, 12));
+}
+
+let paletteSyncRAF = null;
+function schedulePaletteSync() {
+  if (paletteSyncRAF) return;
+  paletteSyncRAF = requestAnimationFrame(() => {
+    paletteSyncRAF = null;
+    syncPaletteCardSizes();
+  });
+}
+window.addEventListener('resize', schedulePaletteSync);
 
 /* ============================================================
    Rendering: Measures
@@ -307,6 +348,15 @@ function renderMeasure(measure, index) {
     <span class="measure-title">Takt ${index + 1}</span>
     <span class="measure-status">${statusText}</span>
   `;
+
+  // Zufalls-Rhythmus sitzt zwischen der Zählzeiten-Anzeige und "Wiederholungen".
+  const randomBtn = document.createElement('button');
+  randomBtn.className = 'measure-randomize';
+  randomBtn.type = 'button';
+  randomBtn.title = 'Zufälligen Rhythmus für diesen Takt erzeugen';
+  randomBtn.textContent = '🎲 Zufall';
+  randomBtn.addEventListener('click', () => randomizeMeasure(measure.id));
+  header.appendChild(randomBtn);
 
   // Wiederholungen sitzt links vom "×" im Kopf (nicht mehr neben dem Raster).
   const repeatLabel = document.createElement('label');
@@ -576,6 +626,49 @@ function addMeasure() {
 function removeMeasure(measureId) {
   state.measures = state.measures.filter((m) => m.id !== measureId);
   if (state.measures.length === 0) state.measures.push(newMeasure());
+  renderMeasures();
+}
+
+// Zufalls-Rhythmus: füllt den Takt von Anfang bis Ende komplett mit
+// zufällig gewählten Notendauern - gewichtet Richtung Achtel/Viertel, damit
+// nicht einfach eine einzige große Note "erwürfelt" wird, und gelegentlich
+// (statt jeder Note) eine passende Pause für Abwechslung.
+const RANDOM_DURATION_WEIGHTS = [
+  { units: 1, weight: 4 },
+  { units: 2, weight: 4 },
+  { units: 4, weight: 2 },
+  { units: 8, weight: 1 },
+];
+const RANDOM_REST_CHANCE = 0.22;
+const UNITS_TO_TYPE_ID = { 1: 'eighth', 2: 'quarter', 4: 'half', 8: 'whole' };
+const UNITS_TO_REST_TYPE_ID = { 1: 'eighthRest', 2: 'quarterRest', 4: 'halfRest', 8: 'wholeRest' };
+
+function pickWeighted(candidates) {
+  const total = candidates.reduce((sum, c) => sum + c.weight, 0);
+  let r = Math.random() * total;
+  for (const c of candidates) {
+    if (r < c.weight) return c;
+    r -= c.weight;
+  }
+  return candidates[candidates.length - 1];
+}
+
+function randomizeMeasure(measureId) {
+  const measure = state.measures.find((m) => m.id === measureId);
+  if (!measure) return;
+  const capacity = timeSigOf(measure).units;
+  const notes = [];
+  let position = 0;
+  while (position < capacity) {
+    const remaining = capacity - position;
+    const candidates = RANDOM_DURATION_WEIGHTS.filter((d) => d.units <= remaining);
+    const units = pickWeighted(candidates).units;
+    const isRest = Math.random() < RANDOM_REST_CHANCE;
+    const typeId = isRest ? UNITS_TO_REST_TYPE_ID[units] : UNITS_TO_TYPE_ID[units];
+    notes.push({ id: uid('n'), typeId, startUnit: position });
+    position += units;
+  }
+  measure.notes = notes;
   renderMeasures();
 }
 
