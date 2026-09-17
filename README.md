@@ -26,20 +26,24 @@ Viertelnote.
 - Bereits platzierte Noten lassen sich innerhalb eines Takts oder in einen
   anderen Takt verschieben; aus dem Raster herausziehen entfernt sie.
 - Kleines "×" auf einer Note entfernt sie direkt.
-- "+ Takt" fügt einen weiteren Takt hinzu, "×" am Takt-Kopf entfernt ihn.
+- "+ Takt" fügt einen weiteren Takt hinzu.
 - Jeder Takt hat seine eigene Taktart: das Dropdown direkt vor dem ersten
-  Feld im Raster wählt zwischen 4/4, 3/4 und 6/8. Zählzeiten-Beschriftung,
-  Schlag-Trennlinien und Grundschlag passen sich automatisch an (6/8 klickt
-  auf den zwei zusammengesetzten Schlägen statt auf jeder Achtel).
+  Feld im Raster (in klassischer Notenschrift, zwei Ziffern übereinander)
+  wählt zwischen 4/4, 3/4 und 6/8. Zählzeiten-Beschriftung, Schlag-
+  Trennlinien und Grundschlag passen sich automatisch an (6/8 klickt auf
+  den zwei zusammengesetzten Schlägen statt auf jeder Achtel).
 - Ein Takt zeigt seinen Füllstand farbig an: grau = leer, amber = angefangen
   aber noch nicht voll, grün ("Voll ✓") = genau voll, rot ("Übervoll!") =
   mehr Noten als die Taktart erlaubt – die überzähligen Noten laufen dabei
   sichtbar aus, statt einen Scrollbalken zu brauchen. Ein übervoller Takt
   lässt sich nicht abspielen ("Abspielen" ist dann deaktiviert), bis er
   korrigiert ist.
-- Rechts neben jedem Raster wählt ein Dropdown, wie oft genau DIESER Takt
+- Im Takt-Kopf wählt ein Dropdown ("Wdh."), wie oft genau DIESER Takt
   wiederholt wird (Standard: 4, frei von 1 bis 50), bevor es mit dem
-  nächsten Takt weitergeht.
+  nächsten Takt weitergeht; "×" direkt daneben entfernt den ganzen Takt.
+- Die Notenwerte-Palette (Noten/Pausen) skaliert Icon- und Schriftgröße
+  automatisch so, dass jede der beiden Gruppen immer in maximal 2 Zeilen
+  passt, egal wie breit der Bildschirm ist.
 - "Abspielen" spielt alle Takte der Reihe nach in der eingestellten
   Geschwindigkeit (Tempo-Regler) ab, jeden Takt so oft wie eingestellt
   direkt hintereinander; jede Note (auch jede einzelne Achtel) klingt für

@@ -249,11 +249,13 @@ h1, h2, h3 { margin: 0; }
   color: #9a968c;
 }
 
+/* Spaltenzahl kommt per JS (renderPalette) als --palette-cols - so viele
+   Spalten wie nötig, um alle Karten in maximal 2 Zeilen unterzubringen
+   (ceil(Anzahl/2)), bei jeder Bildschirmgröße. */
 .palette-cards {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(var(--palette-cols, 2), 1fr);
+  gap: 8px;
 }
 
 .palette-hint {
@@ -263,37 +265,17 @@ h1, h2, h3 { margin: 0; }
 }
 
 @media (max-width: 720px) {
-  .palette-columns { flex-direction: column; gap: 16px; }
+  /* align-items:flex-start (oben für die Desktop-Zeile gedacht) steuert bei
+     flex-direction:column plötzlich die BREITE statt der Höhe - die Gruppe
+     würde sonst nur auf ihre Inhaltsbreite schrumpfen statt volle Breite zu
+     bekommen. */
+  .palette-columns { flex-direction: column; align-items: stretch; gap: 16px; }
   .palette-group + .palette-group {
     border-left: none;
     padding-left: 0;
     border-top: 2px solid var(--line);
     padding-top: 12px;
   }
-}
-
-/* Auf schmalen (Handy-)Bildschirmen sind die Karten insgesamt der größte
-   Platzfresser zwischen Palette und Takt. Zwei Karten pro Zeile statt
-   einer halbiert die nötige Scroll-Strecke - Text/Icon kleiner, aber die
-   Karte bleibt groß genug zum sicheren Antippen. Gleiche Grenze wie oben
-   (720px), damit beides zusammen umschaltet - nicht erst bei 480px, das
-   liegt bei manchen Handys schon über der Hochformat-Breite. */
-@media (max-width: 720px) {
-  .palette-cards {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-  }
-  .note-card {
-    gap: 6px;
-    padding: 6px 8px;
-  }
-  .note-card .icon {
-    width: 26px;
-    height: 32px;
-  }
-  .note-card .label .name { font-size: 0.78rem; }
-  .note-card .label .beats { font-size: 0.66rem; }
 }
 
 main {
@@ -315,21 +297,26 @@ main {
 
 /* ---------- Note card (palette + placed) ---------- */
 
+/* container-type:inline-size macht die Karte selbst zum Bezugsrahmen für
+   cqw - Icon/Schrift skalieren dadurch stufenlos mit der TATSÄCHLICHEN
+   Kartenbreite (abhängig von --palette-cols), statt an einem einzigen
+   Bildschirm-Breakpoint zwischen zwei festen Größen zu springen. */
 .note-card {
+  container-type: inline-size;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: clamp(4px, 6cqw, 10px);
   background: var(--paper);
   border: 2px solid var(--ink);
   border-radius: 10px;
-  padding: 8px 12px;
+  padding: clamp(4px, 5cqw, 8px) clamp(6px, 7cqw, 12px);
   cursor: grab;
   touch-action: none;
 }
 
 .note-card .icon {
-  width: 40px;
-  height: 48px;
+  width: clamp(20px, 22cqw, 40px);
+  height: clamp(24px, 26cqw, 48px);
   flex: none;
 }
 
@@ -339,10 +326,31 @@ main {
   display: flex;
   flex-direction: column;
   line-height: 1.15;
+  min-width: 0;
 }
 
-.note-card .label .name { font-weight: 600; font-size: 0.95rem; }
-.note-card .label .beats { font-size: 0.8rem; color: #6b6b6b; }
+/* Kein nowrap/ellipsis mehr: bei sehr schmalen Karten (z.B. 3 Spalten auf
+   einem Handy) darf der Name lieber zweizeilig umbrechen, als abgeschnitten
+   oder überlappend zu wirken. */
+.note-card .label .name {
+  font-weight: 600;
+  font-size: clamp(0.6rem, 11cqw, 0.95rem);
+}
+.note-card .label .beats {
+  font-size: clamp(0.52rem, 9cqw, 0.8rem);
+  color: #6b6b6b;
+}
+
+/* Ist die Karte insgesamt zu schmal für Icon+Text nebeneinander, steht das
+   Icon stattdessen über dem (zentrierten) Text - container-basiert, hängt
+   also von der tatsächlichen Kartenbreite ab, nicht vom Bildschirm. */
+@container (max-width: 112px) {
+  .note-card {
+    flex-direction: column;
+    text-align: center;
+  }
+  .note-card .label { align-items: center; }
+}
 
 /* ---------- Measure ---------- */
 
@@ -371,6 +379,7 @@ main {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
   margin-bottom: 10px;
 }
 
@@ -392,7 +401,6 @@ main {
 .measure.status-uebervoll .measure-status { background: var(--warn); color: white; }
 
 .measure-remove {
-  margin-left: auto;
   background: none;
   border: none;
   font-size: 1.3rem;
@@ -403,12 +411,29 @@ main {
 }
 .measure-remove:hover { color: var(--warn); }
 
-/* Raster (Notenspur + Zählzeiten-Zahlen) links, Wiederholungen-Feld rechts
-   daneben - beide über die volle Höhe des Takts. */
-.measure-body {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
+/* Wiederholungen sitzt jetzt im Kopf links vom "×" (statt in einer eigenen
+   Box neben dem Raster) - margin-left:auto schiebt beide gemeinsam an den
+   rechten Rand der (ggf. umbrechenden) Kopfzeile. */
+.measure-repeat {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  background: var(--paper-alt);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  color: #6b6b6b;
+  white-space: nowrap;
+  cursor: default;
+}
+.measure-repeat select {
+  font-size: 0.85rem;
+  padding: 2px 4px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  text-align: center;
 }
 
 /* Zwei Spalten (Taktart-Dropdown | Raster), zwei Zeilen (Notenspur |
@@ -417,7 +442,6 @@ main {
    die Zählzeiten-Zahlen bleiben exakt unter der Notenspur (nicht auch unter
    dem Dropdown) ausgerichtet. */
 .track-column {
-  flex: 1 1 auto;
   min-width: 0;
   display: grid;
   grid-template-columns: auto 1fr;
@@ -425,57 +449,75 @@ main {
   align-items: stretch;
 }
 
-.time-sig-select {
+/* Taktart-Dropdown in klassischer Notenschrift (zwei Ziffern übereinander,
+   kein Bruchstrich) - ein eigener kleiner Menü-Button statt eines nativen
+   <select>, damit auch der geschlossene Zustand wie eine echte
+   Taktvorzeichnung aussieht. */
+.time-sig-dropdown {
   grid-column: 1;
   grid-row: 1 / 3;
   align-self: center;
+  position: relative;
+}
+
+.time-sig-trigger {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.05;
   font-weight: 700;
   font-size: 0.95rem;
   color: var(--ink);
   background: var(--paper-alt);
   border: 2px solid var(--line);
   border-radius: 8px;
-  padding: 6px 4px;
+  padding: 6px 8px;
   cursor: pointer;
 }
+.time-sig-trigger:hover { border-color: var(--accent); }
+.ts-num { display: block; }
+
+/* position:fixed statt absolute, damit das Menü nicht vom overflow:hidden
+   des Takts abgeschnitten wird - Position wird beim Öffnen per JS anhand
+   der Trigger-Position gesetzt. */
+.time-sig-menu {
+  position: fixed;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25);
+  padding: 4px;
+  gap: 2px;
+}
+/* [hidden] hat allein dieselbe Spezifität wie die Klasse oben und würde
+   ohne diese kombinierte Regel vom display:flex überschrieben (gleiches
+   Muster wie beim .settings-panel-Fix). */
+.time-sig-menu[hidden] {
+  display: none;
+}
+
+.time-sig-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.05;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--ink);
+  background: none;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  cursor: pointer;
+}
+.time-sig-option:hover { background: var(--paper-alt); }
+.time-sig-option.is-selected { background: var(--accent); color: white; }
 
 .slot-track { grid-column: 2; grid-row: 1; }
 .beat-labels { grid-column: 2; grid-row: 2; }
-
-.measure-repeat {
-  flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 4px;
-  padding: 8px 10px;
-  background: var(--paper-alt);
-  border: 2px solid var(--line);
-  border-radius: 8px;
-  cursor: default;
-}
-.measure-repeat span { font-size: 0.75rem; color: #6b6b6b; white-space: nowrap; }
-.measure-repeat select {
-  font-size: 1rem;
-  padding: 4px;
-  border-radius: 6px;
-  border: 1px solid var(--line);
-  text-align: center;
-}
-
-/* Auf schmalen Bildschirmen (Hochformat Handy) reicht die Breite nicht für
-   Raster + Wiederholungen-Feld nebeneinander - das Feld rutscht dann unter
-   das Raster statt es zusammenzudrücken. */
-@media (max-width: 480px) {
-  .measure-body {
-    flex-wrap: wrap;
-  }
-  .measure-repeat {
-    flex: 1 1 100%;
-    flex-direction: row;
-    justify-content: center;
-  }
-}
 
 .slot-track {
   position: relative;

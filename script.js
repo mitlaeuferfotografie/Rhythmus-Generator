@@ -226,6 +226,14 @@ const paletteCardsRestsEl = document.getElementById('paletteCardsRests');
 function renderPalette() {
   paletteCardsNotesEl.innerHTML = '';
   paletteCardsRestsEl.innerHTML = '';
+  const noteItems = PALETTE_ITEMS.filter((item) => !noteType(item.typeId).isRest);
+  const restItems = PALETTE_ITEMS.filter((item) => noteType(item.typeId).isRest);
+  // So viele Spalten wie nötig, um jede Gruppe in maximal 2 Zeilen
+  // unterzubringen - Icon/Schrift skalieren dazu passend über die
+  // container-query-Regeln von .note-card (siehe style.css).
+  paletteCardsNotesEl.style.setProperty('--palette-cols', Math.ceil(noteItems.length / 2));
+  paletteCardsRestsEl.style.setProperty('--palette-cols', Math.ceil(restItems.length / 2));
+
   PALETTE_ITEMS.forEach((item) => {
     const type = noteType(item.typeId);
     const isPair = item.kind === 'pair';
@@ -255,6 +263,7 @@ function renderPalette() {
 const measuresEl = document.getElementById('measures');
 
 function renderMeasures() {
+  openTimeSigDropdown = null; // die alten DOM-Knoten sind gleich weg
   measuresEl.innerHTML = '';
   state.measures.forEach((measure, idx) => {
     measuresEl.appendChild(renderMeasure(measure, idx));
@@ -294,11 +303,29 @@ function renderMeasure(measure, index) {
   header.innerHTML = `
     <span class="measure-title">Takt ${index + 1}</span>
     <span class="measure-status">${statusText}</span>
-    <button class="measure-remove" title="Takt entfernen">×</button>
   `;
-  header.querySelector('.measure-remove').addEventListener('click', () => {
-    removeMeasure(measure.id);
+
+  // Wiederholungen sitzt links vom "×" im Kopf (nicht mehr neben dem Raster).
+  const repeatLabel = document.createElement('label');
+  repeatLabel.className = 'measure-repeat';
+  repeatLabel.title = 'Wie oft dieser Takt hintereinander wiederholt wird, bevor der nächste Takt beginnt';
+  const repeatSelect = document.createElement('select');
+  repeatSelect.innerHTML = Array.from({ length: 50 }, (_, i) => i + 1)
+    .map((n) => `<option value="${n}"${n === measure.repeatCount ? ' selected' : ''}>${n}</option>`)
+    .join('');
+  repeatSelect.addEventListener('change', () => {
+    measure.repeatCount = Number(repeatSelect.value);
   });
+  repeatLabel.innerHTML = '<span>Wdh.</span>';
+  repeatLabel.appendChild(repeatSelect);
+  header.appendChild(repeatLabel);
+
+  const removeBtn = document.createElement('button');
+  removeBtn.className = 'measure-remove';
+  removeBtn.title = 'Takt entfernen';
+  removeBtn.textContent = '×';
+  removeBtn.addEventListener('click', () => removeMeasure(measure.id));
+  header.appendChild(removeBtn);
 
   const track = document.createElement('div');
   track.className = 'slot-track';
@@ -331,47 +358,96 @@ function renderMeasure(measure, index) {
 
   // Taktart-Auswahl sitzt direkt VOR dem ersten Feld im Raster (wie eine
   // echte Taktvorzeichnung am Anfang der Notenzeile) statt oben im Kopf.
-  const timeSigSelect = document.createElement('select');
-  timeSigSelect.className = 'time-sig-select';
-  timeSigSelect.title = 'Taktart';
-  timeSigSelect.innerHTML = TIME_SIGNATURE_CYCLE.map((key) => `<option value="${key}"${key === measure.timeSignature ? ' selected' : ''}>${key}</option>`).join('');
-  timeSigSelect.addEventListener('change', () => {
-    measure.timeSignature = timeSigSelect.value;
-    renderMeasures();
-  });
+  const timeSigDropdown = buildTimeSigDropdown(measure);
 
   const trackColumn = document.createElement('div');
   trackColumn.className = 'track-column';
-  trackColumn.appendChild(timeSigSelect);
+  trackColumn.appendChild(timeSigDropdown);
   trackColumn.appendChild(track);
   trackColumn.appendChild(beatLabels);
 
-  const repeatLabel = document.createElement('label');
-  repeatLabel.className = 'measure-repeat';
-  repeatLabel.title = 'Wie oft dieser Takt hintereinander wiederholt wird, bevor der nächste Takt beginnt';
-  const repeatSelect = document.createElement('select');
-  repeatSelect.innerHTML = Array.from({ length: 50 }, (_, i) => i + 1)
-    .map((n) => `<option value="${n}"${n === measure.repeatCount ? ' selected' : ''}>${n}</option>`)
-    .join('');
-  repeatSelect.addEventListener('change', () => {
-    measure.repeatCount = Number(repeatSelect.value);
-  });
-  repeatLabel.innerHTML = '<span>Wiederholungen</span>';
-  repeatLabel.appendChild(repeatSelect);
-
-  const body = document.createElement('div');
-  body.className = 'measure-body';
-  body.appendChild(trackColumn);
-  body.appendChild(repeatLabel);
-
   wrap.appendChild(header);
-  wrap.appendChild(body);
+  wrap.appendChild(trackColumn);
 
   track.addEventListener('pointerdown', (e) => {
     // Klicks auf leeren Bereich der Spur sollen nichts auslösen; das Ziehen
     // startet ausschließlich über die Karten (Palette oder platzierte Note).
   });
 
+  return wrap;
+}
+
+// Eigener kleiner Menü-Button statt eines nativen <select> - dadurch kann
+// auch der GESCHLOSSENE Zustand wie eine echte Taktvorzeichnung aussehen
+// (zwei Ziffern übereinander, kein Bruchstrich), was ein <select> nicht
+// leisten kann. Es gibt pro Takt genau eins; nur eines ist je offen -
+// openTimeSigDropdown/closeTimeSigMenu() sorgen dafür.
+let openTimeSigDropdown = null;
+
+function closeTimeSigMenu() {
+  if (!openTimeSigDropdown) return;
+  openTimeSigDropdown.menu.hidden = true;
+  openTimeSigDropdown.trigger.setAttribute('aria-expanded', 'false');
+  openTimeSigDropdown = null;
+}
+
+document.addEventListener('pointerdown', (e) => {
+  if (!openTimeSigDropdown) return;
+  const { trigger, menu } = openTimeSigDropdown;
+  if (trigger.contains(e.target) || menu.contains(e.target)) return;
+  closeTimeSigMenu();
+});
+
+function buildTimeSigDropdown(measure) {
+  const wrap = document.createElement('div');
+  wrap.className = 'time-sig-dropdown';
+
+  const trigger = document.createElement('button');
+  trigger.type = 'button';
+  trigger.className = 'time-sig-trigger';
+  trigger.title = 'Taktart ändern';
+  trigger.setAttribute('aria-haspopup', 'listbox');
+  trigger.setAttribute('aria-expanded', 'false');
+  const ts = timeSigOf(measure);
+  trigger.innerHTML = `<span class="ts-num">${ts.top}</span><span class="ts-num">${ts.bottom}</span>`;
+
+  const menu = document.createElement('div');
+  menu.className = 'time-sig-menu';
+  menu.setAttribute('role', 'listbox');
+  menu.hidden = true;
+
+  TIME_SIGNATURE_CYCLE.forEach((key) => {
+    const [top, bottom] = key.split('/');
+    const option = document.createElement('button');
+    option.type = 'button';
+    option.className = `time-sig-option${key === measure.timeSignature ? ' is-selected' : ''}`;
+    option.innerHTML = `<span class="ts-num">${top}</span><span class="ts-num">${bottom}</span>`;
+    option.addEventListener('click', (e) => {
+      e.stopPropagation();
+      measure.timeSignature = key;
+      closeTimeSigMenu();
+      renderMeasures();
+    });
+    menu.appendChild(option);
+  });
+
+  trigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const wasOpen = openTimeSigDropdown && openTimeSigDropdown.menu === menu;
+    closeTimeSigMenu();
+    if (wasOpen) return;
+    // position:fixed statt absolute, damit das Menü nicht vom
+    // overflow:hidden des Takts abgeschnitten wird.
+    const rect = trigger.getBoundingClientRect();
+    menu.style.left = `${rect.left}px`;
+    menu.style.top = `${rect.bottom + 4}px`;
+    menu.hidden = false;
+    trigger.setAttribute('aria-expanded', 'true');
+    openTimeSigDropdown = { trigger, menu };
+  });
+
+  wrap.appendChild(trigger);
+  wrap.appendChild(menu);
   return wrap;
 }
 
