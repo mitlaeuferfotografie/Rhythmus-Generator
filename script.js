@@ -655,54 +655,63 @@ let audioCtx = null;
 let activeOscillators = [];
 let activeTimeouts = [];
 
+// Feste Lautstärke-Regler-Knoten, durch die ALLE Töne/Klicks laufen. Dadurch
+// wirkt eine Änderung der Lautstärke-Regler sofort auf gerade laufende UND
+// zukünftige Noten (statt erst bei einem Stopp+Neustart), weil gain.value
+// live verändert werden kann, während der Ton schon klingt.
+let noteMasterGain = null;
+let clickMasterGain = null;
+
 function ensureAudioContext() {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    noteMasterGain = audioCtx.createGain();
+    noteMasterGain.gain.value = state.noteVolume;
+    noteMasterGain.connect(audioCtx.destination);
+    clickMasterGain = audioCtx.createGain();
+    clickMasterGain.gain.value = state.clickVolume;
+    clickMasterGain.connect(audioCtx.destination);
   }
   if (audioCtx.state === 'suspended') audioCtx.resume();
   return audioCtx;
 }
 
-// Mallet-artiger Klang (Grundton + leiser Oberton eine Oktave höher, beide
-// über ein abklingendes Lowpass-Filter) statt einer einzelnen Dreieckswelle -
-// klingt weich wie ein Xylophon/Marimba statt scharf/schnarrend.
+// Sanfter, aber DURCHGEHEND gleich lauter Ton (Grundton + leiser Oberton eine
+// Oktave höher), der erst kurz vor Ende der Notendauer wieder leiser wird -
+// nicht wie ein abklingender Mallet-Schlag, der schon nach kurzer Zeit
+// verklingt und dadurch kürzer wirkt, als die Note eigentlich dauert.
 function scheduleTone(startTime, duration, frequency) {
-  const volume = state.noteVolume;
-  if (volume <= 0) return;
   const ctx = audioCtx;
 
   const osc = ctx.createOscillator();
   const overtone = ctx.createOscillator();
   const oscGain = ctx.createGain();
   const overtoneGain = ctx.createGain();
-  const filter = ctx.createBiquadFilter();
 
   osc.type = 'sine';
   osc.frequency.value = frequency;
   overtone.type = 'sine';
   overtone.frequency.value = frequency * 2;
 
-  filter.type = 'lowpass';
-  filter.Q.value = 0.7;
-  filter.frequency.setValueAtTime(frequency * 5, startTime);
-  filter.frequency.exponentialRampToValueAtTime(frequency * 1.2, startTime + duration);
+  const attack = 0.015;
+  const release = Math.min(0.06, duration * 0.25);
+  const sustainEnd = Math.max(attack, duration - release);
+  const peak = 0.5;
 
-  const attack = 0.008;
-  const peak = 0.6 * volume;
-
-  oscGain.gain.setValueAtTime(0.0001, startTime);
+  oscGain.gain.setValueAtTime(0, startTime);
   oscGain.gain.linearRampToValueAtTime(peak, startTime + attack);
-  oscGain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+  oscGain.gain.setValueAtTime(peak, startTime + sustainEnd);
+  oscGain.gain.linearRampToValueAtTime(0, startTime + duration);
 
-  overtoneGain.gain.setValueAtTime(0.0001, startTime);
-  overtoneGain.gain.linearRampToValueAtTime(peak * 0.3, startTime + attack);
-  overtoneGain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration * 0.6);
+  overtoneGain.gain.setValueAtTime(0, startTime);
+  overtoneGain.gain.linearRampToValueAtTime(peak * 0.18, startTime + attack);
+  overtoneGain.gain.setValueAtTime(peak * 0.18, startTime + sustainEnd);
+  overtoneGain.gain.linearRampToValueAtTime(0, startTime + duration);
 
-  osc.connect(oscGain).connect(filter);
-  overtone.connect(overtoneGain).connect(filter);
-  filter.connect(ctx.destination);
+  osc.connect(oscGain).connect(noteMasterGain);
+  overtone.connect(overtoneGain).connect(noteMasterGain);
 
-  const stopTime = startTime + duration + 0.03;
+  const stopTime = startTime + duration + 0.02;
   osc.start(startTime);
   osc.stop(stopTime);
   overtone.start(startTime);
@@ -711,16 +720,14 @@ function scheduleTone(startTime, duration, frequency) {
 }
 
 function scheduleClick(startTime) {
-  const volume = state.clickVolume;
-  if (volume <= 0) return;
   const ctx = audioCtx;
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.type = 'square';
   osc.frequency.value = 1500;
-  gain.gain.setValueAtTime(0.24 * volume, startTime);
+  gain.gain.setValueAtTime(0.24, startTime);
   gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.04);
-  osc.connect(gain).connect(ctx.destination);
+  osc.connect(gain).connect(clickMasterGain);
   osc.start(startTime);
   osc.stop(startTime + 0.05);
   activeOscillators.push(osc);
@@ -895,10 +902,12 @@ repeatInput.addEventListener('change', () => {
 noteVolumeSlider.addEventListener('input', () => {
   state.noteVolume = Number(noteVolumeSlider.value) / 100;
   noteVolumeValue.textContent = noteVolumeSlider.value;
+  if (noteMasterGain) noteMasterGain.gain.setTargetAtTime(state.noteVolume, audioCtx.currentTime, 0.01);
 });
 clickVolumeSlider.addEventListener('input', () => {
   state.clickVolume = Number(clickVolumeSlider.value) / 100;
   clickVolumeValue.textContent = clickVolumeSlider.value;
+  if (clickMasterGain) clickMasterGain.gain.setTargetAtTime(state.clickVolume, audioCtx.currentTime, 0.01);
 });
 
 // Einstellungen-Flyout: Tempo/Grundschlag/Wiederholungen sind nicht mehr
