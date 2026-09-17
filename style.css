@@ -594,6 +594,14 @@ main {
   opacity: 0.85;
 }
 .insert-preview .icon { opacity: 0.6; }
+
+/* Ohne display:flex fehlt den beiden .eighth-half-Hälften (die sich sonst
+   auf den flex-Kontext von .placed-note-pair verlassen) ihr Nebeneinander -
+   sie fallen dann exakt übereinander und sehen wie EIN Notenkopf mit einem
+   losen Balken darunter aus, statt wie ein Achtelpaar. */
+.insert-preview-pair {
+  display: flex;
+}
 .insert-preview-pair .beam-bar { opacity: 0.6; }
 
 .measure.preview-overfull {
