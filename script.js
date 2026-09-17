@@ -31,8 +31,9 @@ const unitsToPercent = (units, capacity) => (units / capacity) * 100;
 
 // Notenkopf-Position (% der EIGENEN Notenbreite), sodass er immer exakt in
 // der Mitte der ERSTEN Achtel-Einheit seiner Dauer landet - unabhängig von
-// der Gesamtbreite der Note. -17px ist ein fester, an der Icon-Grafik
-// empirisch ausgemessener Korrekturwert (Icon-Größe bleibt bewusst fix).
+// der Gesamtbreite der Note. Die eigentliche Pixel-Korrektur (-12.2px, an
+// der Icon-Grafik empirisch ausgemessen) sitzt in style.css bei .icon
+// (Icon-Größe bleibt bewusst fix).
 const anchorPercent = (units) => 50 / units;
 
 // Jede Note wird per CSS (.placed-note .icon) an einer festen Position
@@ -430,11 +431,6 @@ function renderMeasure(measure, index) {
 
   wrap.appendChild(header);
   wrap.appendChild(trackColumn);
-
-  track.addEventListener('pointerdown', (e) => {
-    // Klicks auf leeren Bereich der Spur sollen nichts auslösen; das Ziehen
-    // startet ausschließlich über die Karten (Palette oder platzierte Note).
-  });
 
   return wrap;
 }
@@ -1145,7 +1141,11 @@ function scheduleAhead() {
       // Durchlauf fertig (evtl. Stille nach der letzten Note bis zum
       // Taktende) - Restzeit addieren und zum nächsten Durchlauf weiter.
       // Kein hörbares Ereignis, deshalb keine Horizon-Prüfung nötig.
-      const remainingUnits = instance.extent - Math.max(0, s.lastProcessedUnit);
+      // Math.max(0, ...) fängt den Fall ab, dass eine Live-Bearbeitung
+      // (z.B. Taktart-Wechsel + gleichzeitig eine hintere Note entfernt)
+      // extent kleiner als den schon verplanten lastProcessedUnit macht -
+      // ohne die Absicherung würde die Zeit sonst rückwärts laufen.
+      const remainingUnits = Math.max(0, instance.extent - Math.max(0, s.lastProcessedUnit));
       s.nextTime += remainingUnits * unitSeconds;
       s.queueIdx += 1;
       s.lastProcessedUnit = -1;
