@@ -135,6 +135,8 @@ const state = {
   bpm: 90,
   metronome: true,
   isPlaying: false,
+  noteVolume: 0.6,
+  clickVolume: 0.5,
 };
 
 function newMeasure() {
@@ -661,35 +663,62 @@ function ensureAudioContext() {
   return audioCtx;
 }
 
+// Mallet-artiger Klang (Grundton + leiser Oberton eine Oktave höher, beide
+// über ein abklingendes Lowpass-Filter) statt einer einzelnen Dreieckswelle -
+// klingt weich wie ein Xylophon/Marimba statt scharf/schnarrend.
 function scheduleTone(startTime, duration, frequency) {
+  const volume = state.noteVolume;
+  if (volume <= 0) return;
   const ctx = audioCtx;
+
   const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = 'triangle';
+  const overtone = ctx.createOscillator();
+  const oscGain = ctx.createGain();
+  const overtoneGain = ctx.createGain();
+  const filter = ctx.createBiquadFilter();
+
+  osc.type = 'sine';
   osc.frequency.value = frequency;
+  overtone.type = 'sine';
+  overtone.frequency.value = frequency * 2;
 
-  const attack = 0.015;
-  const release = Math.min(0.08, duration * 0.3);
-  const peak = 0.28;
+  filter.type = 'lowpass';
+  filter.Q.value = 0.7;
+  filter.frequency.setValueAtTime(frequency * 5, startTime);
+  filter.frequency.exponentialRampToValueAtTime(frequency * 1.2, startTime + duration);
 
-  gain.gain.setValueAtTime(0, startTime);
-  gain.gain.linearRampToValueAtTime(peak, startTime + attack);
-  gain.gain.setValueAtTime(peak * 0.85, startTime + Math.max(attack, duration - release));
-  gain.gain.linearRampToValueAtTime(0, startTime + duration);
+  const attack = 0.008;
+  const peak = 0.6 * volume;
 
-  osc.connect(gain).connect(ctx.destination);
+  oscGain.gain.setValueAtTime(0.0001, startTime);
+  oscGain.gain.linearRampToValueAtTime(peak, startTime + attack);
+  oscGain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+
+  overtoneGain.gain.setValueAtTime(0.0001, startTime);
+  overtoneGain.gain.linearRampToValueAtTime(peak * 0.3, startTime + attack);
+  overtoneGain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration * 0.6);
+
+  osc.connect(oscGain).connect(filter);
+  overtone.connect(overtoneGain).connect(filter);
+  filter.connect(ctx.destination);
+
+  const stopTime = startTime + duration + 0.03;
   osc.start(startTime);
-  osc.stop(startTime + duration + 0.02);
-  activeOscillators.push(osc);
+  osc.stop(stopTime);
+  overtone.start(startTime);
+  overtone.stop(stopTime);
+  activeOscillators.push(osc, overtone);
 }
 
 function scheduleClick(startTime) {
+  const volume = state.clickVolume;
+  if (volume <= 0) return;
   const ctx = audioCtx;
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.type = 'square';
   osc.frequency.value = 1500;
-  gain.gain.setValueAtTime(0.12, startTime);
+  gain.gain.setValueAtTime(0.24 * volume, startTime);
   gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.04);
   osc.connect(gain).connect(ctx.destination);
   osc.start(startTime);
@@ -843,6 +872,10 @@ const bpmSlider = document.getElementById('bpmSlider');
 const bpmValue = document.getElementById('bpmValue');
 const metronomeToggle = document.getElementById('metronomeToggle');
 const repeatInput = document.getElementById('repeatInput');
+const noteVolumeSlider = document.getElementById('noteVolumeSlider');
+const noteVolumeValue = document.getElementById('noteVolumeValue');
+const clickVolumeSlider = document.getElementById('clickVolumeSlider');
+const clickVolumeValue = document.getElementById('clickVolumeValue');
 
 document.getElementById('addMeasureBtn').addEventListener('click', addMeasure);
 playPauseBtn.addEventListener('click', () => {
@@ -858,6 +891,14 @@ metronomeToggle.addEventListener('change', () => {
 });
 repeatInput.addEventListener('change', () => {
   repeatInput.value = Math.max(1, Math.min(50, Math.round(Number(repeatInput.value)) || 1));
+});
+noteVolumeSlider.addEventListener('input', () => {
+  state.noteVolume = Number(noteVolumeSlider.value) / 100;
+  noteVolumeValue.textContent = noteVolumeSlider.value;
+});
+clickVolumeSlider.addEventListener('input', () => {
+  state.clickVolume = Number(clickVolumeSlider.value) / 100;
+  clickVolumeValue.textContent = clickVolumeSlider.value;
 });
 
 // Einstellungen-Flyout: Tempo/Grundschlag/Wiederholungen sind nicht mehr

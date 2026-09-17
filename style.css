@@ -122,7 +122,7 @@ h1, h2, h3 { margin: 0; }
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
 }
 
-.tempo-label, .metronome-label {
+.tempo-label, .metronome-label, .volume-label {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -130,7 +130,8 @@ h1, h2, h3 { margin: 0; }
   white-space: nowrap;
 }
 
-.tempo-label input[type="range"] {
+.tempo-label input[type="range"],
+.volume-label input[type="range"] {
   width: 140px;
 }
 
@@ -183,16 +184,19 @@ h1, h2, h3 { margin: 0; }
 
 .settings-panel .tempo-label,
 .settings-panel .metronome-label,
-.settings-panel .repeat-label {
+.settings-panel .repeat-label,
+.settings-panel .volume-label {
   font-size: 1rem;
 }
 
-.settings-panel .tempo-label input[type="range"] {
+.settings-panel .tempo-label input[type="range"],
+.settings-panel .volume-label input[type="range"] {
   width: 100%;
   margin-top: 6px;
 }
 
-.settings-panel .tempo-label {
+.settings-panel .tempo-label,
+.settings-panel .volume-label {
   flex-direction: column;
   align-items: stretch;
   gap: 4px;
