@@ -433,7 +433,7 @@ function startDragNew(e, paletteItem) {
   const units = isPair ? paletteItem.units : type.units;
   const innerHtml = isPair ? pairInnerHtml() : singleInnerHtml(type.icon, anchorPercent(units));
   drag = { kind: 'new', paletteItem, units, isPair, innerHtml };
-  beginGhost(wrapHtml(innerHtml, units * currentUnitPx(), isPair));
+  beginGhost(wrapHtml(innerHtml, units * currentUnitPx(), isPair), e.clientX, e.clientY);
   document.addEventListener('pointermove', onDragMove);
   document.addEventListener('pointerup', onDragEnd);
 }
@@ -446,7 +446,7 @@ function startDragMove(e, noteId) {
   const type = noteType(loc.measure.notes[loc.index].typeId);
   const innerHtml = singleInnerHtml(type.icon, anchorPercent(type.units));
   drag = { kind: 'move', noteId, units: type.units, isPair: false, innerHtml };
-  beginGhost(wrapHtml(innerHtml, type.units * currentUnitPx(), false));
+  beginGhost(wrapHtml(innerHtml, type.units * currentUnitPx(), false), e.clientX, e.clientY);
   document.querySelectorAll(`[data-note-id="${noteId}"]`).forEach((el) => el.classList.add('dragging-source'));
   document.addEventListener('pointermove', onDragMove);
   document.addEventListener('pointerup', onDragEnd);
@@ -466,8 +466,15 @@ function wrapHtml(innerHtml, widthPx, isPair) {
   return `<div class="${cls}" style="width:${widthPx}px;">${innerHtml}</div>`;
 }
 
-function beginGhost(html) {
+// left/top MÜSSEN schon hier gesetzt werden, nicht erst im ersten
+// pointermove danach - sonst erscheint der Ghost für einen Frame an seiner
+// alten Position von einem vorherigen Drag (meist irgendwo im Raster, wo
+// zuletzt abgelegt wurde) und "beamt" sich erst beim ersten Mausereignis
+// zum Cursor.
+function beginGhost(html, x, y) {
   dragGhost.innerHTML = html;
+  dragGhost.style.left = `${x}px`;
+  dragGhost.style.top = `${y}px`;
   dragGhost.hidden = false;
 }
 
