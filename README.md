@@ -35,9 +35,9 @@ Viertelnote.
 - Ein Takt zeigt seinen Füllstand farbig an: grau = leer, amber = angefangen
   aber noch nicht voll, grün ("Voll ✓") = genau voll, rot ("Übervoll!") =
   mehr Noten als die Taktart erlaubt – die überzähligen Noten laufen dabei
-  sichtbar aus, statt einen Scrollbalken zu brauchen. Ein übervoller Takt
-  lässt sich nicht abspielen ("Abspielen" ist dann deaktiviert), bis er
-  korrigiert ist.
+  sichtbar aus, statt einen Scrollbalken zu brauchen. "Abspielen" ist
+  deaktiviert, solange nicht JEDER Takt genau voll ist (also bei leeren,
+  offenen oder übervollen Takten) - erst wenn alle "Voll ✓" zeigen, geht's los.
 - Im Takt-Kopf wählt ein Dropdown ("Wdh."), wie oft genau DIESER Takt
   wiederholt wird (Standard: 4, frei von 1 bis 50), bevor es mit dem
   nächsten Takt weitergeht; "×" direkt daneben entfernt den ganzen Takt.

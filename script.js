@@ -189,8 +189,11 @@ function measureStatus(measure) {
   return 'offen';
 }
 
-function anyMeasureOverfull() {
-  return state.measures.some((m) => measureStatus(m) === 'uebervoll');
+// Abspielen ist nur sinnvoll, wenn jeder Takt exakt voll ist - ein "offener"
+// Takt hat noch unnotierte Lücken, ein "übervoller" passt nicht in die
+// Taktart. Beides würde beim Abspielen falsch/unvollständig klingen.
+function allMeasuresFull() {
+  return state.measures.every((m) => measureStatus(m) === 'voll');
 }
 
 // Formatiert eine Achtel-"unit"-Anzahl als Zählzeiten-Zahl für die
@@ -271,13 +274,13 @@ function renderMeasures() {
   updatePlayAvailability();
 }
 
-// Ein übervoller Takt darf nicht abgespielt werden - der Button wird
-// deaktiviert, statt beim Klick nur stillschweigend nichts zu tun, damit
-// sofort sichtbar ist, dass (und warum) "Abspielen" gerade nicht geht.
+// Nur vollständig ausgefüllte Takte dürfen abgespielt werden - der Button
+// wird deaktiviert, statt beim Klick nur stillschweigend nichts zu tun,
+// damit sofort sichtbar ist, dass (und warum) "Abspielen" gerade nicht geht.
 function updatePlayAvailability() {
-  const blocked = anyMeasureOverfull();
+  const blocked = !allMeasuresFull();
   playPauseBtn.disabled = blocked && !state.isPlaying;
-  playPauseBtn.title = blocked ? 'Mindestens ein Takt ist übervoll - erst korrigieren, um abspielen zu können' : '';
+  playPauseBtn.title = blocked ? 'Jeder Takt muss vollständig ausgefüllt sein, um abspielen zu können' : '';
 }
 
 function renderMeasure(measure, index) {
@@ -917,7 +920,7 @@ function scheduleClick(startTime) {
 
 function play() {
   if (state.isPlaying) return;
-  if (anyMeasureOverfull()) return; // Übervolle Takte dürfen nicht abgespielt werden
+  if (!allMeasuresFull()) return; // Nur vollständig ausgefüllte Takte dürfen abgespielt werden
   state.isPlaying = true;
   ensureAudioContext();
   playPauseBtn.textContent = '■ Stopp';
