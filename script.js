@@ -662,26 +662,6 @@ let activeTimeouts = [];
 let noteMasterGain = null;
 let clickMasterGain = null;
 
-// Echte Vibraphon-Aufnahme (CC0, VSCO-2-CE von Versilian Studios) statt
-// synthetisiertem Ton - klingt natürlich ca. 2.4s aus, lang genug um auch
-// halbe/ganze Noten glaubwürdig zu halten, statt wie ein kurzer Punktklang
-// (Xylophon o.ä.) sofort zu verstummen.
-let noteBuffer = null;
-let noteBufferPromise = null;
-
-function loadNoteSample() {
-  if (!noteBufferPromise) {
-    noteBufferPromise = fetch('sounds/vibraphone.wav')
-      .then((res) => res.arrayBuffer())
-      .then((data) => audioCtx.decodeAudioData(data))
-      .then((buffer) => {
-        noteBuffer = buffer;
-        return buffer;
-      });
-  }
-  return noteBufferPromise;
-}
-
 function ensureAudioContext() {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -691,38 +671,49 @@ function ensureAudioContext() {
     clickMasterGain = audioCtx.createGain();
     clickMasterGain.gain.value = state.clickVolume;
     clickMasterGain.connect(audioCtx.destination);
-    loadNoteSample();
   }
   if (audioCtx.state === 'suspended') audioCtx.resume();
   return audioCtx;
 }
 
+// FM-Glocke ("Extra glitzernd"): ein Träger-Oszillator wird von einem
+// zweiten Oszillator in der Frequenz moduliert. Der Modulationsindex klingt
+// am Anfang schnell ab - das gibt den glockig-glitzernden Anschlag, danach
+// bleibt ein reiner, gehaltener Ton übrig. Weil der Ton komplett synthetisch
+// ist (kein natürlich abklingendes Sample), hält er exakt so lange, wie die
+// Notendauer es vorgibt - auch bei halben/ganzen Noten.
 function scheduleTone(startTime, duration) {
-  if (!noteBuffer) return;
   const ctx = audioCtx;
-
-  const source = ctx.createBufferSource();
-  source.buffer = noteBuffer;
+  const carrier = ctx.createOscillator();
+  const modulator = ctx.createOscillator();
+  const modGain = ctx.createGain();
   const gain = ctx.createGain();
-  gain.gain.setValueAtTime(1, startTime);
 
-  const release = 0.06;
-  if (duration < noteBuffer.duration) {
-    // Note ist kürzer als das natürliche Ausklingen des Samples: knapp vor
-    // Ende der Notendauer sauber ausblenden, damit sie nicht in die nächste
-    // Note hineinklingt.
-    gain.gain.setValueAtTime(1, startTime + Math.max(0, duration - release));
-    gain.gain.linearRampToValueAtTime(0, startTime + duration);
-  }
-  // Sonst: den echten Ton einfach vollständig natürlich ausklingen lassen -
-  // auch ein real gespieltes Vibraphon klingt bei einer gehaltenen Note
-  // irgendwann von selbst aus.
+  carrier.type = 'sine';
+  carrier.frequency.value = 523.25;
+  modulator.type = 'sine';
+  modulator.frequency.value = 523.25 * 5.5;
 
-  source.connect(gain).connect(noteMasterGain);
-  source.start(startTime);
-  const stopTime = startTime + Math.min(duration, noteBuffer.duration) + release + 0.02;
-  source.stop(stopTime);
-  activeOscillators.push(source);
+  modGain.gain.setValueAtTime(1500, startTime);
+  modGain.gain.exponentialRampToValueAtTime(30, startTime + Math.min(duration, 1.5));
+  modulator.connect(modGain).connect(carrier.frequency);
+
+  const attack = 0.004;
+  const release = Math.min(0.08, duration * 0.25);
+  const peak = 0.44;
+  gain.gain.setValueAtTime(0, startTime);
+  gain.gain.linearRampToValueAtTime(peak, startTime + attack);
+  gain.gain.setValueAtTime(peak, startTime + Math.max(attack, duration - release));
+  gain.gain.linearRampToValueAtTime(0, startTime + duration);
+
+  carrier.connect(gain).connect(noteMasterGain);
+
+  const stopTime = startTime + duration + 0.05;
+  modulator.start(startTime);
+  modulator.stop(stopTime);
+  carrier.start(startTime);
+  carrier.stop(stopTime);
+  activeOscillators.push(modulator, carrier);
 }
 
 function scheduleClick(startTime) {
@@ -739,18 +730,12 @@ function scheduleClick(startTime) {
   activeOscillators.push(osc);
 }
 
-async function play() {
+function play() {
   if (state.isPlaying) return;
   state.isPlaying = true;
   ensureAudioContext();
   playPauseBtn.textContent = '■ Stopp';
   playPauseBtn.classList.add('is-playing');
-
-  // Beim allerersten Abspielen muss das Vibraphon-Sample erst geladen werden -
-  // ohne dieses Warten würde die erste Note stumm bleiben, weil der Fetch
-  // noch nicht fertig ist, wenn scheduleTone() sie verplanen will.
-  await loadNoteSample();
-  if (!state.isPlaying) return;
 
   const startAt = audioCtx.currentTime + 0.15;
   const repeatCount = Math.max(1, Math.min(50, Math.round(Number(repeatInput.value)) || 1));

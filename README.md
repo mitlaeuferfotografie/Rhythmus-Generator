@@ -39,10 +39,6 @@ Funktioniert mit Maus, Finger (Touch) und Stift, und passt sich jeder
 Bildschirmgröße an (kein horizontales Scrollen) – gedacht für den Einsatz auf
 einem interaktiven Whiteboard/Tafel, aber auch auf Tablet/Laptop nutzbar.
 
-Der Notenklang (`sounds/vibraphone.wav`) ist eine echte Vibraphon-Aufnahme aus
-der [VSCO-2-CE-Sample-Bibliothek](https://github.com/sgossner/VSCO-2-CE) von
-Versilian Studios (CC0/gemeinfrei).
-
 ## Lokal starten
 
 Kein Build-Schritt nötig, reines HTML/CSS/JS.
