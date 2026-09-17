@@ -433,7 +433,10 @@ function startDragNew(e, paletteItem) {
   const units = isPair ? paletteItem.units : type.units;
   const innerHtml = isPair ? pairInnerHtml() : singleInnerHtml(type.icon, anchorPercent(units));
   drag = { kind: 'new', paletteItem, units, isPair, innerHtml };
-  beginGhost(wrapHtml(innerHtml, units * currentUnitPx(), isPair), e.clientX, e.clientY);
+  // Bei einem Achtelpaar sitzt der erste Notenkopf in der Mitte der ersten
+  // (linken) Hälfte, also bei 25% der Gesamtbreite.
+  const anchorPct = isPair ? 25 : anchorPercent(units);
+  beginGhost(wrapHtml(innerHtml, units * currentUnitPx(), isPair), e.clientX, e.clientY, anchorPct);
   document.addEventListener('pointermove', onDragMove);
   document.addEventListener('pointerup', onDragEnd);
 }
@@ -446,7 +449,7 @@ function startDragMove(e, noteId) {
   const type = noteType(loc.measure.notes[loc.index].typeId);
   const innerHtml = singleInnerHtml(type.icon, anchorPercent(type.units));
   drag = { kind: 'move', noteId, units: type.units, isPair: false, innerHtml };
-  beginGhost(wrapHtml(innerHtml, type.units * currentUnitPx(), false), e.clientX, e.clientY);
+  beginGhost(wrapHtml(innerHtml, type.units * currentUnitPx(), false), e.clientX, e.clientY, anchorPercent(type.units));
   document.querySelectorAll(`[data-note-id="${noteId}"]`).forEach((el) => el.classList.add('dragging-source'));
   document.addEventListener('pointermove', onDragMove);
   document.addEventListener('pointerup', onDragEnd);
@@ -471,10 +474,16 @@ function wrapHtml(innerHtml, widthPx, isPair) {
 // alten Position von einem vorherigen Drag (meist irgendwo im Raster, wo
 // zuletzt abgelegt wurde) und "beamt" sich erst beim ersten Mausereignis
 // zum Cursor.
-function beginGhost(html, x, y) {
+//
+// Der Cursor sitzt NICHT in der Mitte der Note, sondern genau über dem
+// Notenkopf (--ghost-anchor-x, dieselbe anchorPercent-Logik wie im Raster) -
+// bei einer breiten Note (halbe/ganze) wäre die Mitte weit vom eigentlichen
+// Notenkopf entfernt und man würde beim Ablegen leicht daneben zielen.
+function beginGhost(html, x, y, anchorPct) {
   dragGhost.innerHTML = html;
   dragGhost.style.left = `${x}px`;
   dragGhost.style.top = `${y}px`;
+  dragGhost.style.setProperty('--ghost-anchor-x', `${anchorPct}%`);
   dragGhost.hidden = false;
 }
 

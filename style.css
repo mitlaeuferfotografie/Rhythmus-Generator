@@ -626,12 +626,16 @@ main {
 
 /* ---------- Drag ghost ---------- */
 
+/* Horizontal hängt der Cursor am Notenkopf (--ghost-anchor-x, per JS gesetzt),
+   nicht an der Boxmitte - bei einer breiten Note (halbe/ganze) würde man
+   sonst weit vom eigentlichen Notenkopf entfernt zielen. Vertikal bleibt der
+   Cursor mittig in der Note. */
 .drag-ghost {
   position: fixed;
   z-index: 999;
   pointer-events: none;
   opacity: 0.9;
-  transform: translate(-50%, -50%);
+  transform: translate(calc(-1 * var(--ghost-anchor-x, 50%)), -50%);
 }
 
 .drag-ghost .note-card,
