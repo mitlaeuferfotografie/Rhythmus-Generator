@@ -306,15 +306,26 @@ main {
    Pausen sehen dadurch immer gleich groß aus. */
 .note-card {
   container-type: inline-size;
-  display: flex;
-  align-items: center;
-  gap: var(--palette-card-gap, 8px);
   background: var(--paper);
   border: 2px solid var(--ink);
   border-radius: 10px;
-  padding: var(--palette-card-pad-y, 6px) var(--palette-card-pad-x, 10px);
   cursor: grab;
   touch-action: none;
+}
+
+/* Eigener Flex-Wrapper statt Flex direkt auf .note-card: eine @container-
+   Regel kann den Container selbst nicht anhand seiner eigenen Breite
+   umschalten (das griff nie, obwohl es unauffällig so aussah), nur einen
+   Nachfahren - deshalb sitzt das Layout hier auf .card-body. Das Padding
+   sitzt bewusst auch hier (statt auf .note-card): die @container-Abfrage
+   misst die Content-Box des Containers OHNE dessen Padding - läge das
+   Padding auf .note-card selbst, wäre die gemessene Breite immer knapp
+   unter dem Schwellenwert und die Abfrage würde fast permanent zuschlagen. */
+.note-card .card-body {
+  display: flex;
+  align-items: center;
+  gap: var(--palette-card-gap, 8px);
+  padding: var(--palette-card-pad-y, 6px) var(--palette-card-pad-x, 10px);
 }
 
 .note-card .icon {
@@ -348,7 +359,7 @@ main {
    Icon stattdessen über dem (zentrierten) Text - container-basiert, hängt
    also von der tatsächlichen Kartenbreite ab, nicht vom Bildschirm. */
 @container (max-width: 112px) {
-  .note-card {
+  .note-card .card-body {
     flex-direction: column;
     text-align: center;
   }

@@ -252,10 +252,12 @@ function renderPalette() {
     const card = document.createElement('div');
     card.className = 'note-card';
     card.innerHTML = `
-      <span class="icon">${icon}</span>
-      <span class="label">
-        <span class="name">${name}</span>
-        <span class="beats">${beatsLabel} Zählzeit${beatsLabel === '1' ? '' : 'en'}</span>
+      <span class="card-body">
+        <span class="icon">${icon}</span>
+        <span class="label">
+          <span class="name">${name}</span>
+          <span class="beats">${beatsLabel} Zählzeit${beatsLabel === '1' ? '' : 'en'}</span>
+        </span>
       </span>
     `;
     card.addEventListener('pointerdown', (e) => startDragNew(e, item));
@@ -697,7 +699,6 @@ function currentUnitPx() {
 }
 
 function startDragNew(e, paletteItem) {
-  if (state.isPlaying) return;
   e.preventDefault();
   const isPair = paletteItem.kind === 'pair';
   const type = noteType(paletteItem.typeId);
@@ -713,7 +714,6 @@ function startDragNew(e, paletteItem) {
 }
 
 function startDragMove(e, noteId) {
-  if (state.isPlaying) return;
   e.preventDefault();
   const loc = findNoteLocation(noteId);
   if (!loc) return;
@@ -1025,63 +1025,50 @@ function play() {
 
   const startAt = audioCtx.currentTime + 0.15;
 
-  const timeline = buildTimeline();
-  startScheduler(timeline, startAt);
+  const queue = buildMeasureQueue();
+  startScheduler(queue, startAt);
   startCursor();
 }
 
-// Baut die reine Struktur (welche Note/Pause an welcher Unit-Position, wo
-// Taktgrenzen liegen) OHNE jede Zeit-/Tempo-Angabe - das Tempo fließt erst
-// beim tatsächlichen Verplanen der Zeiten ein (siehe scheduleAhead), damit
-// eine Tempo-Änderung während der Wiedergabe sofort für alles Kommende
-// wirkt, ohne stoppen und neu starten zu müssen.
-//
-// Jeder Takt wird direkt hintereinander SEIN EIGENES repeatCount-mal
-// gespielt (nicht die gesamte Reihenfolge insgesamt N-mal) - "Takt 1 4x,
-// dann Takt 2 2x, ..." statt "die ganze Abfolge 4x".
-function buildTimeline() {
-  let cursorUnits = 0;
-  const noteEvents = []; // { unit, note, type, measureId }
-  const measureBoundaries = []; // { unit, measureId, capacityUnits }
-  const clickUnitSet = new Set();
-
+// Legt nur die REIHENFOLGE fest (welcher Takt wie oft direkt hintereinander
+// dran ist - "Takt 1 4x, dann Takt 2 2x, ..." statt "die ganze Abfolge
+// 4x"), eingefroren beim Start. Der NOTEN-INHALT jedes Durchlaufs wird
+// bewusst NICHT hier eingefroren, sondern bei jedem Scheduler-Tick frisch
+// aus state.measures gelesen (siehe instanceSnapshot/scheduleAhead) - so
+// wirken Löschen/Hineinziehen von Noten während der Wiedergabe sofort auf
+// den laufenden bzw. nächsten Durchlauf, ohne stoppen und neu starten zu
+// müssen.
+function buildMeasureQueue() {
+  const queue = [];
   state.measures.forEach((measure) => {
-    const ts = timeSigOf(measure);
     const repeatCount = Math.max(1, Math.min(50, Math.round(measure.repeatCount) || 1));
-    // Jede Note trägt ihre eigene Position (startUnit) - Lücken erzeugen
-    // hier einfach keinen Event, statt übersprungen werden zu müssen. Die
-    // Reichweite pro Durchlauf ist mindestens die Kapazität, oder mehr,
-    // falls der Takt übervoll ist.
-    const extent = Math.max(ts.units, measureExtent(measure, null));
+    for (let rep = 0; rep < repeatCount; rep++) queue.push(measure.id);
+  });
+  return queue;
+}
 
-    for (let rep = 0; rep < repeatCount; rep++) {
-      const measureStartUnits = cursorUnits;
-      measureBoundaries.push({ unit: measureStartUnits, measureId: measure.id, capacityUnits: ts.units });
-      for (let k = 0; k < ts.units; k += ts.clickInterval) clickUnitSet.add(measureStartUnits + k);
+// Baut die Checkpoint-Struktur EINES einzelnen Takt-Durchlaufs, relativ zu
+// dessen eigenem Anfang (Unit 0) - IMMER frisch aus dem aktuellen
+// state.measures gelesen, nie zwischengespeichert. Liefert null, wenn der
+// Takt während der Wiedergabe komplett entfernt wurde.
+function instanceSnapshot(measureId) {
+  const measure = state.measures.find((m) => m.id === measureId);
+  if (!measure) return null;
+  const ts = timeSigOf(measure);
+  const extent = Math.max(ts.units, measureExtent(measure, null));
+  const clickUnitSet = new Set();
+  for (let k = 0; k < ts.units; k += ts.clickInterval) clickUnitSet.add(k);
 
-      measure.notes.forEach((note) => {
-        const type = noteType(note.typeId);
-        noteEvents.push({ unit: measureStartUnits + note.startUnit, note, type, measureId: measure.id });
-      });
-
-      cursorUnits = measureStartUnits + extent;
-    }
+  const noteByUnit = new Map();
+  measure.notes.forEach((note) => {
+    noteByUnit.set(note.startUnit, { note, type: noteType(note.typeId) });
   });
 
-  // Checkpoints: jede Notenstart-Unit UND jeder Grundschlag-Klickpunkt
-  // (unabhängig davon ob der Klick aktuell ein-/ausgeschaltet ist - das wird
-  // erst beim Verplanen live geprüft). Nur an diesen Punkten passiert etwas.
   const checkpointSet = new Set(clickUnitSet);
-  noteEvents.forEach((e) => checkpointSet.add(e.unit));
+  noteByUnit.forEach((_, unit) => checkpointSet.add(unit));
   const checkpoints = Array.from(checkpointSet).sort((a, b) => a - b);
 
-  return {
-    totalUnits: cursorUnits,
-    checkpoints,
-    clickUnitSet,
-    noteByUnit: new Map(noteEvents.map((e) => [e.unit, e])),
-    measureByUnit: new Map(measureBoundaries.map((m) => [m.unit, m])),
-  };
+  return { measureId: measure.id, capacityUnits: ts.units, extent, clickUnitSet, noteByUnit, checkpoints };
 }
 
 const SCHEDULE_AHEAD_SECONDS = 0.15;
@@ -1096,10 +1083,11 @@ let schedulerTimer = null;
 // man den Tempo-Regler während der Wiedergabe, wirkt sich das also auf den
 // nächsten noch nicht verplanten Schritt aus (max. ~einen Schlag später),
 // statt erst beim nächsten Stopp+Neustart.
-function startScheduler(timeline, startAt) {
+function startScheduler(queue, startAt) {
   scheduler = {
-    timeline,
-    idx: 0,
+    queue, // Reihenfolge der Takt-IDs (mit Wiederholungen), eingefroren beim Start
+    queueIdx: 0,
+    lastProcessedUnit: -1, // -1 = im aktuellen Durchlauf noch nichts verplant
     nextTime: startAt,
     noteRealSegments: [], // { noteId, startTime, endTime }
     measureRealSegments: [], // { measureId, startTime, endTime }
@@ -1109,26 +1097,80 @@ function startScheduler(timeline, startAt) {
   schedulerTimer = setInterval(scheduleAhead, SCHEDULE_INTERVAL_MS);
 }
 
+function finishScheduler(s) {
+  s.finished = true;
+  clearInterval(schedulerTimer);
+  schedulerTimer = null;
+  // Bis zum geplanten Ende in echten (Wanduhr-)Millisekunden, ausgehend von
+  // audioCtx.currentTime JETZT + großzügiger Nachlauf, damit die letzte
+  // Note/der letzte Klick nie vorzeitig abgeschnitten wird.
+  const remainingSeconds = s.nextTime - audioCtx.currentTime + 0.4;
+  activeTimeouts.push(setTimeout(() => stop(), Math.max(0, remainingSeconds * 1000)));
+}
+
+// Verplant Schritt für Schritt, jeweils den Takt-Durchlauf, der gerade an
+// der Reihe ist NEU aus state.measures gelesen (instanceSnapshot) - eine
+// während der Wiedergabe gelöschte/hinzugefügte/verschobene Note steht also
+// spätestens beim nächsten Tick (≈30ms) in dieser frischen Momentaufnahme,
+// solange ihre Zählzeit noch nicht verplant wurde (s.lastProcessedUnit).
+// Bereits verplante Töne (innerhalb des winzigen Vorlaufs) laufen wie
+// gewohnt zu Ende - das ist die einzige, kaum wahrnehmbare Grenze.
 function scheduleAhead() {
   const s = scheduler;
   if (!s || s.finished) return;
-  const { timeline } = s;
   const horizon = audioCtx.currentTime + SCHEDULE_AHEAD_SECONDS;
 
-  while (s.idx < timeline.checkpoints.length && s.nextTime < horizon) {
-    const unit = timeline.checkpoints[s.idx];
-    const unitSeconds = 60 / state.bpm / 2;
-    const time = s.nextTime;
+  while (true) {
+    if (s.queueIdx >= s.queue.length) {
+      finishScheduler(s);
+      return;
+    }
 
-    if (timeline.clickUnitSet.has(unit) && state.metronome) {
+    const instance = instanceSnapshot(s.queue[s.queueIdx]);
+    if (!instance) {
+      // Takt wurde während der Wiedergabe komplett entfernt - überspringen,
+      // ohne Zeit zu verbrauchen.
+      s.queueIdx += 1;
+      s.lastProcessedUnit = -1;
+      continue;
+    }
+
+    const unitSeconds = 60 / state.bpm / 2;
+    const nextUnit = instance.checkpoints.find((u) => u > s.lastProcessedUnit);
+
+    if (nextUnit === undefined) {
+      // Durchlauf fertig (evtl. Stille nach der letzten Note bis zum
+      // Taktende) - Restzeit addieren und zum nächsten Durchlauf weiter.
+      // Kein hörbares Ereignis, deshalb keine Horizon-Prüfung nötig.
+      const remainingUnits = instance.extent - Math.max(0, s.lastProcessedUnit);
+      s.nextTime += remainingUnits * unitSeconds;
+      s.queueIdx += 1;
+      s.lastProcessedUnit = -1;
+      continue;
+    }
+
+    // s.nextTime ist die Zeit des ZULETZT verplanten Checkpoints (bzw. der
+    // Start der Wiedergabe, falls noch keiner dran war) - die Zeit DIESES
+    // Checkpoints ist das um die Einheiten-Distanz vorgerückte "time" unten.
+    // Wichtig: für das Verplanen MUSS die vorgerückte Zeit benutzt werden,
+    // nicht die alte s.nextTime - sonst landet jede Note eine Zählzeit zu
+    // früh (auf der Zeit des vorherigen Checkpoints).
+    const deltaUnits = nextUnit - Math.max(0, s.lastProcessedUnit);
+    const time = s.nextTime + deltaUnits * unitSeconds;
+    if (time >= horizon) return; // erst beim nächsten Tick weiter
+
+    if (instance.clickUnitSet.has(nextUnit) && state.metronome) {
       scheduleClick(time);
     }
-    if (timeline.measureByUnit.has(unit)) {
-      const { measureId, capacityUnits } = timeline.measureByUnit.get(unit);
-      s.measureRealSegments.push({ measureId, startTime: time, endTime: time + capacityUnits * unitSeconds });
+    if (nextUnit === 0) {
+      s.measureRealSegments.push({
+        measureId: instance.measureId,
+        startTime: time,
+        endTime: time + instance.capacityUnits * unitSeconds,
+      });
     }
-    if (timeline.noteByUnit.has(unit)) {
-      const { note, type } = timeline.noteByUnit.get(unit);
+    if (instance.noteByUnit.has(nextUnit)) {
+      const { note, type } = instance.noteByUnit.get(nextUnit);
       const noteDuration = type.units * unitSeconds;
       if (!type.isRest) {
         scheduleTone(time, noteDuration * 0.92);
@@ -1136,21 +1178,8 @@ function scheduleAhead() {
       s.noteRealSegments.push({ noteId: note.id, startTime: time, endTime: time + noteDuration });
     }
 
-    const nextUnit = s.idx + 1 < timeline.checkpoints.length ? timeline.checkpoints[s.idx + 1] : timeline.totalUnits;
-    s.nextTime = time + (nextUnit - unit) * unitSeconds;
-    s.idx += 1;
-  }
-
-  if (s.idx >= timeline.checkpoints.length) {
-    s.finished = true;
-    clearInterval(schedulerTimer);
-    schedulerTimer = null;
-
-    // Bis zum geplanten Ende in echten (Wanduhr-)Millisekunden, ausgehend von
-    // audioCtx.currentTime JETZT + großzügiger Nachlauf, damit die letzte
-    // Note/der letzte Klick nie vorzeitig abgeschnitten wird.
-    const remainingSeconds = s.nextTime - audioCtx.currentTime + 0.4;
-    activeTimeouts.push(setTimeout(() => stop(), Math.max(0, remainingSeconds * 1000)));
+    s.nextTime = time;
+    s.lastProcessedUnit = nextUnit;
   }
 }
 

@@ -55,6 +55,10 @@ Viertelnote.
   ihre eigene, korrekte Dauer, Pausen bleiben still. Ein laufender
   Zeigebalken zeigt dabei genau, wann eine Note dran ist. "Grundschlag"
   blendet einen leisen Klick auf jeder Zählzeit ein/aus.
+- Auch WÄHREND des Abspielens lässt sich der Rhythmus verändern: Noten
+  löschen oder neue hinein- bzw. verschieben wirkt sofort auf die laufende
+  Wiedergabe, ohne stoppen und neu starten zu müssen - nur der jeweils
+  nächste, schon ganz kurz bevorstehende Ton ist davon nicht mehr betroffen.
 
 Funktioniert mit Maus, Finger (Touch) und Stift, und passt sich jeder
 Bildschirmgröße an (kein horizontales Scrollen) – gedacht für den Einsatz auf
