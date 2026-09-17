@@ -676,47 +676,57 @@ function ensureAudioContext() {
   return audioCtx;
 }
 
-// Sanfter, aber DURCHGEHEND gleich lauter Ton (Grundton + leiser Oberton eine
-// Oktave höher), der erst kurz vor Ende der Notendauer wieder leiser wird -
-// nicht wie ein abklingender Mallet-Schlag, der schon nach kurzer Zeit
-// verklingt und dadurch kürzer wirkt, als die Note eigentlich dauert.
+// Metallophon-artiger Klang: zwei leicht gegeneinander verstimmte
+// Grundton-Oszillatoren erzeugen ein sanftes Schweben (wie bei echten
+// Metallophon-/Vibraphonstäben), dazu ein leiser, nicht-harmonischer Oberton
+// für die metallische Klangfarbe. Bleibt DURCHGEHEND gleich laut und wird
+// erst kurz vor Ende der Notendauer leiser, damit die hörbare Länge exakt
+// dem Notenwert entspricht (kein früh abklingender Mallet-Schlag).
 function scheduleTone(startTime, duration, frequency) {
   const ctx = audioCtx;
+  const detune = 3; // Hz Verstimmung zwischen den beiden Grundton-Oszillatoren
 
-  const osc = ctx.createOscillator();
+  const oscA = ctx.createOscillator();
+  const oscB = ctx.createOscillator();
   const overtone = ctx.createOscillator();
-  const oscGain = ctx.createGain();
+  const gainA = ctx.createGain();
+  const gainB = ctx.createGain();
   const overtoneGain = ctx.createGain();
 
-  osc.type = 'sine';
-  osc.frequency.value = frequency;
+  oscA.type = 'sine';
+  oscA.frequency.value = frequency - detune;
+  oscB.type = 'sine';
+  oscB.frequency.value = frequency + detune;
   overtone.type = 'sine';
-  overtone.frequency.value = frequency * 2;
+  overtone.frequency.value = frequency * 2.4;
 
   const attack = 0.015;
   const release = Math.min(0.06, duration * 0.25);
   const sustainEnd = Math.max(attack, duration - release);
-  const peak = 0.5;
+  const peak = 0.32;
 
-  oscGain.gain.setValueAtTime(0, startTime);
-  oscGain.gain.linearRampToValueAtTime(peak, startTime + attack);
-  oscGain.gain.setValueAtTime(peak, startTime + sustainEnd);
-  oscGain.gain.linearRampToValueAtTime(0, startTime + duration);
+  [gainA, gainB].forEach((g) => {
+    g.gain.setValueAtTime(0, startTime);
+    g.gain.linearRampToValueAtTime(peak, startTime + attack);
+    g.gain.setValueAtTime(peak, startTime + sustainEnd);
+    g.gain.linearRampToValueAtTime(0, startTime + duration);
+  });
 
   overtoneGain.gain.setValueAtTime(0, startTime);
-  overtoneGain.gain.linearRampToValueAtTime(peak * 0.18, startTime + attack);
-  overtoneGain.gain.setValueAtTime(peak * 0.18, startTime + sustainEnd);
+  overtoneGain.gain.linearRampToValueAtTime(peak * 0.22, startTime + attack);
+  overtoneGain.gain.setValueAtTime(peak * 0.22, startTime + sustainEnd);
   overtoneGain.gain.linearRampToValueAtTime(0, startTime + duration);
 
-  osc.connect(oscGain).connect(noteMasterGain);
+  oscA.connect(gainA).connect(noteMasterGain);
+  oscB.connect(gainB).connect(noteMasterGain);
   overtone.connect(overtoneGain).connect(noteMasterGain);
 
   const stopTime = startTime + duration + 0.02;
-  osc.start(startTime);
-  osc.stop(stopTime);
-  overtone.start(startTime);
-  overtone.stop(stopTime);
-  activeOscillators.push(osc, overtone);
+  [oscA, oscB, overtone].forEach((o) => {
+    o.start(startTime);
+    o.stop(stopTime);
+  });
+  activeOscillators.push(oscA, oscB, overtone);
 }
 
 function scheduleClick(startTime) {
@@ -740,30 +750,32 @@ function play() {
   playPauseBtn.textContent = '■ Stopp';
   playPauseBtn.classList.add('is-playing');
 
-  const secondsPerBeat = 60 / state.bpm;
-  const unitSeconds = secondsPerBeat / 2;
   const startAt = audioCtx.currentTime + 0.15;
   const repeatCount = Math.max(1, Math.min(50, Math.round(Number(repeatInput.value)) || 1));
 
+  const timeline = buildTimeline(repeatCount);
+  startScheduler(timeline, startAt);
+  startCursor();
+}
+
+// Baut die reine Struktur (welche Note/Pause an welcher Unit-Position, wo
+// Taktgrenzen liegen) OHNE jede Zeit-/Tempo-Angabe - das Tempo fließt erst
+// beim tatsächlichen Verplanen der Zeiten ein (siehe scheduleAhead), damit
+// eine Tempo-Änderung während der Wiedergabe sofort für alles Kommende
+// wirkt, ohne stoppen und neu starten zu müssen.
+function buildTimeline(repeatCount) {
   let cursorUnits = 0;
-  const measureSegments = []; // { measureId, startUnit } - für den laufenden Cursor
-  const noteSegments = []; // { noteId, startUnit, endUnit } - für die Hervorhebung
+  const noteEvents = []; // { unit, note, type, measureId }
+  const measureBoundaries = []; // { unit, measureId }
 
   for (let rep = 0; rep < repeatCount; rep++) {
     state.measures.forEach((measure) => {
       const measureStartUnits = cursorUnits;
-      measureSegments.push({ measureId: measure.id, startUnit: measureStartUnits });
+      measureBoundaries.push({ unit: measureStartUnits, measureId: measure.id });
 
       measure.notes.forEach((note) => {
         const type = noteType(note.typeId);
-        const noteStart = startAt + cursorUnits * unitSeconds;
-        const noteDuration = type.units * unitSeconds;
-
-        if (!type.isRest) {
-          scheduleTone(noteStart, noteDuration * 0.92, 523.25);
-        }
-        noteSegments.push({ noteId: note.id, startUnit: cursorUnits, endUnit: cursorUnits + type.units });
-
+        noteEvents.push({ unit: cursorUnits, note, type, measureId: measure.id });
         cursorUnits += type.units;
       });
 
@@ -774,71 +786,138 @@ function play() {
     });
   }
 
-  const totalUnits = cursorUnits;
+  // Checkpoints: jede Notenstart-Unit UND jede gerade Unit (Grundschlag-Raster,
+  // unabhängig davon ob der Klick aktuell ein-/ausgeschaltet ist - das wird
+  // erst beim Verplanen live geprüft). Nur an diesen Punkten passiert etwas.
+  const checkpointSet = new Set();
+  for (let u = 0; u < cursorUnits; u += 2) checkpointSet.add(u);
+  noteEvents.forEach((e) => checkpointSet.add(e.unit));
+  const checkpoints = Array.from(checkpointSet).sort((a, b) => a - b);
 
-  if (state.metronome) {
-    for (let u = 0; u < totalUnits; u += 2) {
-      scheduleClick(startAt + u * unitSeconds);
+  return {
+    totalUnits: cursorUnits,
+    checkpoints,
+    noteByUnit: new Map(noteEvents.map((e) => [e.unit, e])),
+    measureByUnit: new Map(measureBoundaries.map((m) => [m.unit, m.measureId])),
+  };
+}
+
+const SCHEDULE_AHEAD_SECONDS = 0.15;
+const SCHEDULE_INTERVAL_MS = 30;
+
+let scheduler = null;
+let schedulerTimer = null;
+
+// Läuft alle SCHEDULE_INTERVAL_MS und verplant jeweils nur ein kleines Stück
+// Vorlauf (SCHEDULE_AHEAD_SECONDS) - dadurch wird für jeden Schritt die
+// Dauer mit dem GERADE JETZT gültigen Tempo (state.bpm) berechnet. Ändert
+// man den Tempo-Regler während der Wiedergabe, wirkt sich das also auf den
+// nächsten noch nicht verplanten Schritt aus (max. ~einen Schlag später),
+// statt erst beim nächsten Stopp+Neustart.
+function startScheduler(timeline, startAt) {
+  scheduler = {
+    timeline,
+    idx: 0,
+    nextTime: startAt,
+    noteRealSegments: [], // { noteId, startTime, endTime }
+    measureRealSegments: [], // { measureId, startTime, endTime }
+    finished: false,
+  };
+  scheduleAhead();
+  schedulerTimer = setInterval(scheduleAhead, SCHEDULE_INTERVAL_MS);
+}
+
+function scheduleAhead() {
+  const s = scheduler;
+  if (!s || s.finished) return;
+  const { timeline } = s;
+  const horizon = audioCtx.currentTime + SCHEDULE_AHEAD_SECONDS;
+
+  while (s.idx < timeline.checkpoints.length && s.nextTime < horizon) {
+    const unit = timeline.checkpoints[s.idx];
+    const unitSeconds = 60 / state.bpm / 2;
+    const time = s.nextTime;
+
+    if (unit % 2 === 0 && state.metronome) {
+      scheduleClick(time);
     }
+    if (timeline.measureByUnit.has(unit)) {
+      const measureId = timeline.measureByUnit.get(unit);
+      s.measureRealSegments.push({ measureId, startTime: time, endTime: time + UNITS_PER_MEASURE * unitSeconds });
+    }
+    if (timeline.noteByUnit.has(unit)) {
+      const { note, type } = timeline.noteByUnit.get(unit);
+      const noteDuration = type.units * unitSeconds;
+      if (!type.isRest) {
+        scheduleTone(time, noteDuration * 0.92, 523.25);
+      }
+      s.noteRealSegments.push({ noteId: note.id, startTime: time, endTime: time + noteDuration });
+    }
+
+    const nextUnit = s.idx + 1 < timeline.checkpoints.length ? timeline.checkpoints[s.idx + 1] : timeline.totalUnits;
+    s.nextTime = time + (nextUnit - unit) * unitSeconds;
+    s.idx += 1;
   }
 
-  // Bis zum geplanten Ende in echten (Wanduhr-)Millisekunden, ausgehend von
-  // audioCtx.currentTime JETZT (nicht von der Annahme, dass "jetzt" und der
-  // Anfangs-Vorlauf startAt exakt zusammenfallen) + großzügiger Nachlauf,
-  // damit die letzte Note/der letzte Klick nie vorzeitig abgeschnitten wird.
-  const remainingSeconds = startAt - audioCtx.currentTime + totalUnits * unitSeconds;
-  const totalMs = remainingSeconds * 1000 + 400;
-  activeTimeouts.push(setTimeout(() => stop(), totalMs));
+  if (s.idx >= timeline.checkpoints.length) {
+    s.finished = true;
+    clearInterval(schedulerTimer);
+    schedulerTimer = null;
 
-  startCursor(measureSegments, noteSegments, unitSeconds, startAt);
+    // Bis zum geplanten Ende in echten (Wanduhr-)Millisekunden, ausgehend von
+    // audioCtx.currentTime JETZT + großzügiger Nachlauf, damit die letzte
+    // Note/der letzte Klick nie vorzeitig abgeschnitten wird.
+    const remainingSeconds = s.nextTime - audioCtx.currentTime + 0.4;
+    activeTimeouts.push(setTimeout(() => stop(), Math.max(0, remainingSeconds * 1000)));
+  }
 }
 
 // Laufender Zeigebalken UND Noten-Hervorhebung laufen über dieselbe Uhr
 // (audioCtx.currentTime, nicht die System-/setTimeout-Uhr) - sonst laufen
 // beide mit der Zeit leicht gegeneinander (und gegen den tatsächlichen Ton)
 // auseinander, weil setTimeout-Verzögerungen nicht exakt sample-genau sind.
+// Nutzt die tatsächlich verplanten Zeiten aus dem Scheduler (nicht eine
+// feste Formel), damit das auch bei einer Tempo-Änderung mitten in der
+// Wiedergabe korrekt bleibt.
 let cursorRAF = null;
 let highlightedNoteIds = new Set();
 
-function startCursor(measureSegments, noteSegments, unitSeconds, startAt) {
+function startCursor() {
   function tick() {
     if (!state.isPlaying) return;
-    const elapsedUnits = (audioCtx.currentTime - startAt) / unitSeconds;
+    const now = audioCtx.currentTime;
+    const s = scheduler;
 
     document.querySelectorAll('.playhead.active').forEach((p) => p.classList.remove('active'));
 
-    if (elapsedUnits >= 0) {
-      const segment = measureSegments.find(
-        (s) => elapsedUnits >= s.startUnit && elapsedUnits < s.startUnit + UNITS_PER_MEASURE
-      );
-      if (segment) {
-        const track = document.querySelector(`.slot-track[data-measure-id="${segment.measureId}"]`);
+    if (s) {
+      const activeMeasure = s.measureRealSegments.find((m) => now >= m.startTime && now < m.endTime);
+      if (activeMeasure) {
+        const track = document.querySelector(`.slot-track[data-measure-id="${activeMeasure.measureId}"]`);
         const playhead = track && track.querySelector('.playhead');
         if (playhead) {
-          const pct = ((elapsedUnits - segment.startUnit) / UNITS_PER_MEASURE) * 100;
+          const pct = ((now - activeMeasure.startTime) / (activeMeasure.endTime - activeMeasure.startTime)) * 100;
           playhead.style.left = `${Math.max(0, Math.min(100, pct))}%`;
           playhead.classList.add('active');
         }
       }
-    }
 
-    const activeIds = new Set();
-    if (elapsedUnits >= 0) {
-      noteSegments.forEach((seg) => {
-        if (elapsedUnits >= seg.startUnit && elapsedUnits < seg.endUnit) activeIds.add(seg.noteId);
+      const activeIds = new Set();
+      s.noteRealSegments.forEach((seg) => {
+        if (now >= seg.startTime && now < seg.endTime) activeIds.add(seg.noteId);
       });
+      highlightedNoteIds.forEach((id) => {
+        if (!activeIds.has(id)) {
+          document.querySelectorAll(`[data-note-id="${id}"]`).forEach((el) => el.classList.remove('playing'));
+        }
+      });
+      activeIds.forEach((id) => {
+        if (!highlightedNoteIds.has(id)) {
+          document.querySelectorAll(`[data-note-id="${id}"]`).forEach((el) => el.classList.add('playing'));
+        }
+      });
+      highlightedNoteIds = activeIds;
     }
-    highlightedNoteIds.forEach((id) => {
-      if (!activeIds.has(id)) {
-        document.querySelectorAll(`[data-note-id="${id}"]`).forEach((el) => el.classList.remove('playing'));
-      }
-    });
-    activeIds.forEach((id) => {
-      if (!highlightedNoteIds.has(id)) {
-        document.querySelectorAll(`[data-note-id="${id}"]`).forEach((el) => el.classList.add('playing'));
-      }
-    });
-    highlightedNoteIds = activeIds;
 
     cursorRAF = requestAnimationFrame(tick);
   }
@@ -864,6 +943,11 @@ function stop() {
   activeOscillators = [];
   activeTimeouts.forEach((t) => clearTimeout(t));
   activeTimeouts = [];
+  if (schedulerTimer) {
+    clearInterval(schedulerTimer);
+    schedulerTimer = null;
+  }
+  scheduler = null;
   stopCursor();
   state.isPlaying = false;
   playPauseBtn.textContent = '▶ Abspielen';
