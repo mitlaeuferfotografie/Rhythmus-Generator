@@ -1,7 +1,7 @@
 # Rhythmus-Generator
 
 Interaktive Web-App für die digitale Tafel: Notenwerte per Drag & Drop in einen
-4/4-Takt legen, den Füllstand (offen / voll / übervoll) sofort sehen und den
+Takt legen, den Füllstand (offen / voll / übervoll) sofort sehen und den
 gelegten Rhythmus optional hörbar abspielen.
 
 Passend zur Unterrichtsreihe "Rhythmusnotationen 3/4" – die Notenwerte
@@ -23,17 +23,26 @@ Viertelnote.
   anderen Takt verschieben; aus dem Raster herausziehen entfernt sie.
 - Kleines "×" auf einer Note entfernt sie direkt.
 - "+ Takt" fügt einen weiteren Takt hinzu, "×" am Takt-Kopf entfernt ihn.
+- Jeder Takt hat seine eigene Taktart: Klick auf das Taktart-Symbol (oben
+  links im Takt, in klassischer Notenschrift) wechselt reihum durch 4/4,
+  3/4 und 6/8. Zählzeiten-Beschriftung, Schlag-Trennlinien und Grundschlag
+  passen sich automatisch an (6/8 klickt auf den zwei zusammengesetzten
+  Schlägen statt auf jeder Achtel).
 - Ein Takt zeigt seinen Füllstand farbig an: grau = leer, amber = angefangen
-  aber noch nicht voll, grün ("Voll ✓") = genau 4 Zählzeiten belegt, rot
-  ("Übervoll!") = mehr als 4 Zählzeiten – die überzähligen Noten laufen dabei
-  sichtbar aus, statt einen Scrollbalken zu brauchen.
+  aber noch nicht voll, grün ("Voll ✓") = genau voll, rot ("Übervoll!") =
+  mehr Noten als die Taktart erlaubt – die überzähligen Noten laufen dabei
+  sichtbar aus, statt einen Scrollbalken zu brauchen. Ein übervoller Takt
+  lässt sich nicht abspielen ("Abspielen" ist dann deaktiviert), bis er
+  korrigiert ist.
+- Rechts neben jedem Raster legt ein Zahlenfeld fest, wie oft genau DIESER
+  Takt wiederholt wird (Standard: 4, frei von 1 bis 50), bevor es mit dem
+  nächsten Takt weitergeht.
 - "Abspielen" spielt alle Takte der Reihe nach in der eingestellten
-  Geschwindigkeit (Tempo-Regler) ab; jede Note (auch jede einzelne Achtel)
-  klingt für ihre eigene, korrekte Dauer, Pausen bleiben still. Ein laufender
+  Geschwindigkeit (Tempo-Regler) ab, jeden Takt so oft wie eingestellt
+  direkt hintereinander; jede Note (auch jede einzelne Achtel) klingt für
+  ihre eigene, korrekte Dauer, Pausen bleiben still. Ein laufender
   Zeigebalken zeigt dabei genau, wann eine Note dran ist. "Grundschlag"
-  blendet einen leisen Klick auf jeder Zählzeit ein/aus. "Wiederholungen"
-  legt fest, wie oft der komplette Rhythmus hintereinander abgespielt wird
-  (Standard: 4, frei einstellbar von 1 bis 50).
+  blendet einen leisen Klick auf jeder Zählzeit ein/aus.
 
 Funktioniert mit Maus, Finger (Touch) und Stift, und passt sich jeder
 Bildschirmgröße an (kein horizontales Scrollen) – gedacht für den Einsatz auf

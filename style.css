@@ -117,6 +117,16 @@ h1, h2, h3 { margin: 0; }
   background: var(--warn);
 }
 
+/* Solange mindestens ein Takt übervoll ist, darf gar nicht erst abgespielt
+   werden - deutlich sichtbar statt beim Klick nur stillschweigend nichts
+   zu tun. */
+.play-pause-btn:disabled {
+  background: var(--line);
+  color: #8a8a8a;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
 .bottom-bar .btn-secondary {
   border-radius: 999px;
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
@@ -140,23 +150,7 @@ h1, h2, h3 { margin: 0; }
   height: 22px;
 }
 
-.repeat-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 1rem;
-  white-space: nowrap;
-}
-
-.repeat-label input[type="number"] {
-  width: 56px;
-  font-size: 1rem;
-  padding: 6px;
-  border-radius: 6px;
-  border: none;
-}
-
-/* Tempo/Grundschlag/Wiederholungen sind ein Flyout statt permanent in der
+/* Tempo/Grundschlag sind ein Flyout statt permanent in der
    Werkzeugleiste - die bleibt dadurch bei jeder Bildschirmbreite kurz,
    statt bei jedem Umbruch höher zu werden und den Rest zu verdecken.
    Fixed statt absolute (nicht mehr an die schmale .bottom-bar-Breite
@@ -192,7 +186,6 @@ h1, h2, h3 { margin: 0; }
 
 .settings-panel .tempo-label,
 .settings-panel .metronome-label,
-.settings-panel .repeat-label,
 .settings-panel .volume-label {
   font-size: 1rem;
 }
@@ -410,6 +403,71 @@ main {
 }
 .measure-remove:hover { color: var(--warn); }
 
+/* Taktart-Symbol in klassischer Notenschrift (zwei Ziffern übereinander,
+   ohne Bruchstrich) - Klick wechselt reihum durch 4/4, 3/4, 6/8. */
+.time-sig-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+  background: none;
+  border: none;
+  padding: 0 4px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--ink);
+}
+.time-sig-btn:hover { color: var(--accent); }
+.time-sig-btn .ts-num { display: block; }
+
+/* Raster (Notenspur + Zählzeiten-Zahlen) links, Wiederholungen-Feld rechts
+   daneben - beide über die volle Höhe des Takts. */
+.measure-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.track-column {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.measure-repeat {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--paper-alt);
+  border: 2px solid var(--line);
+  border-radius: 8px;
+  cursor: default;
+}
+.measure-repeat input[type="number"] {
+  width: 40px;
+  font-size: 1rem;
+  padding: 4px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  text-align: center;
+}
+.measure-repeat span { font-size: 0.9rem; color: #6b6b6b; }
+
+/* Auf schmalen Bildschirmen (Hochformat Handy) reicht die Breite nicht für
+   Raster + Wiederholungen-Feld nebeneinander - das Feld rutscht dann unter
+   das Raster statt es zusammenzudrücken. */
+@media (max-width: 480px) {
+  .measure-body {
+    flex-wrap: wrap;
+  }
+  .measure-repeat {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+}
+
 .slot-track {
   position: relative;
   display: flex;
@@ -449,7 +507,6 @@ main {
    Zählzeiten-Zahl mit jeder weiteren Note leicht auseinander. */
 .beat-labels {
   display: grid;
-  grid-template-columns: repeat(8, 1fr);
   margin-top: 4px;
   border: 2px solid transparent;
   font-size: 0.75rem;
@@ -457,6 +514,9 @@ main {
   text-align: center; /* Zahl sitzt in der Spaltenmitte - genau da, wo auch der Notenkopf verankert ist */
 }
 .beat-labels span:nth-child(odd) { font-weight: 600; color: #555; }
+/* 6/8: jede Zahl ist ein eigener Achtel-Zählpunkt (kein "1 + 2 +"-Wechsel) -
+   deshalb werden hier alle Zahlen gleich betont statt nur die ungeraden. */
+.beat-labels-compound span { font-weight: 600; color: #555; }
 
 .placed-note {
   position: relative;

@@ -5,12 +5,29 @@
    Einheit: 1 "unit" = eine Achtelnote. Ein 4/4-Takt = 8 units.
    ============================================================ */
 
-const UNITS_PER_MEASURE = 8;
+const UNITS_PER_MEASURE = 8; // Standard-Kapazität (4/4) - Fallback, wenn keine Taktart bekannt ist
+
+// Jede Taktart bringt ihre eigene Kapazität (in Achtel-"units") mit, ihre
+// eigenen Zählzeiten-Beschriftungen und ihr eigenes Grundschlag-Intervall
+// (4/4 und 3/4: Klick auf jeder Viertel = alle 2 units; 6/8: Klick auf jedem
+// der zwei zusammengesetzten Schläge = alle 3 units). displayDivisor
+// rechnet units in die "X von Y"-Anzeige um (4/4, 3/4: Viertel = 2 units,
+// also /2; 6/8: 1 Achtel = 1 Zähleinheit, also /1).
+const TIME_SIGNATURES = {
+  '4/4': { top: 4, bottom: 4, units: 8, beatTicks: [0, 2, 4, 6, 8], labels: ['1', '+', '2', '+', '3', '+', '4', '+'], clickInterval: 2, displayDivisor: 2 },
+  '3/4': { top: 3, bottom: 4, units: 6, beatTicks: [0, 2, 4, 6], labels: ['1', '+', '2', '+', '3', '+'], clickInterval: 2, displayDivisor: 2 },
+  '6/8': { top: 6, bottom: 8, units: 6, beatTicks: [0, 3, 6], labels: ['1', '2', '3', '4', '5', '6'], clickInterval: 3, displayDivisor: 1 },
+};
+const TIME_SIGNATURE_CYCLE = ['4/4', '3/4', '6/8'];
+
+function timeSigOf(measure) {
+  return TIME_SIGNATURES[measure.timeSignature] || TIME_SIGNATURES['4/4'];
+}
 
 // Alle Breiten werden in % der Takt-Breite gerechnet (nicht in fixen px) -
 // dadurch passt sich die Tafel jeder Bildschirmgröße an, ohne dass ein
 // Takt, der eigentlich passt, einen horizontalen Scrollbalken braucht.
-const unitsToPercent = (units) => (units / UNITS_PER_MEASURE) * 100;
+const unitsToPercent = (units, capacity) => (units / capacity) * 100;
 
 // Notenkopf-Position (% der EIGENEN Notenbreite), sodass er immer exakt in
 // der Mitte der ERSTEN Achtel-Einheit seiner Dauer landet - unabhängig von
@@ -140,7 +157,7 @@ const state = {
 };
 
 function newMeasure() {
-  return { id: uid('m'), notes: [] };
+  return { id: uid('m'), notes: [], timeSignature: '4/4', repeatCount: 4 };
 }
 
 function measureUnits(measure) {
@@ -149,10 +166,23 @@ function measureUnits(measure) {
 
 function measureStatus(measure) {
   const units = measureUnits(measure);
+  const capacity = timeSigOf(measure).units;
   if (units === 0) return 'leer';
-  if (units < UNITS_PER_MEASURE) return 'offen';
-  if (units === UNITS_PER_MEASURE) return 'voll';
+  if (units < capacity) return 'offen';
+  if (units === capacity) return 'voll';
   return 'uebervoll';
+}
+
+function anyMeasureOverfull() {
+  return state.measures.some((m) => measureStatus(m) === 'uebervoll');
+}
+
+// Formatiert eine Achtel-"unit"-Anzahl als Zählzeiten-Zahl für die
+// Füllstand-Anzeige EINES Takts - abhängig von dessen Taktart (siehe
+// displayDivisor in TIME_SIGNATURES).
+function formatMeasureFill(units, measure) {
+  const beats = units / timeSigOf(measure).displayDivisor;
+  return Number.isInteger(beats) ? String(beats) : beats.toFixed(1);
 }
 
 // Reihenfolge + Startposition (in Achtel-Einheiten) jeder Note im Takt -
@@ -215,12 +245,23 @@ function renderMeasures() {
   state.measures.forEach((measure, idx) => {
     measuresEl.appendChild(renderMeasure(measure, idx));
   });
+  updatePlayAvailability();
+}
+
+// Ein übervoller Takt darf nicht abgespielt werden - der Button wird
+// deaktiviert, statt beim Klick nur stillschweigend nichts zu tun, damit
+// sofort sichtbar ist, dass (und warum) "Abspielen" gerade nicht geht.
+function updatePlayAvailability() {
+  const blocked = anyMeasureOverfull();
+  playPauseBtn.disabled = blocked && !state.isPlaying;
+  playPauseBtn.title = blocked ? 'Mindestens ein Takt ist übervoll - erst korrigieren, um abspielen zu können' : '';
 }
 
 function renderMeasure(measure, index) {
   const status = measureStatus(measure);
+  const ts = timeSigOf(measure);
   const units = measureUnits(measure);
-  const beats = formatBeats(units);
+  const beats = formatMeasureFill(units, measure);
 
   const wrap = document.createElement('div');
   wrap.className = `measure status-${status}`;
@@ -230,13 +271,16 @@ function renderMeasure(measure, index) {
   header.className = 'measure-header';
 
   const statusText = {
-    leer: '0 / 4 Zählzeiten',
-    offen: `${beats} / 4 Zählzeiten`,
+    leer: `0 / ${ts.top} Zählzeiten`,
+    offen: `${beats} / ${ts.top} Zählzeiten`,
     voll: 'Voll ✓',
     uebervoll: 'Übervoll!',
   }[status];
 
   header.innerHTML = `
+    <button class="time-sig-btn" title="Taktart ändern (4/4, 3/4, 6/8)">
+      <span class="ts-num">${ts.top}</span><span class="ts-num">${ts.bottom}</span>
+    </button>
     <span class="measure-title">Takt ${index + 1}</span>
     <span class="measure-status">${statusText}</span>
     <button class="measure-remove" title="Takt entfernen">×</button>
@@ -244,21 +288,24 @@ function renderMeasure(measure, index) {
   header.querySelector('.measure-remove').addEventListener('click', () => {
     removeMeasure(measure.id);
   });
+  header.querySelector('.time-sig-btn').addEventListener('click', () => {
+    cycleTimeSignature(measure.id);
+  });
 
   const track = document.createElement('div');
   track.className = 'slot-track';
   track.dataset.measureId = measure.id;
 
-  // Schlag-Trennlinien (nach jeder Viertel) + Taktende-Markierung
-  [0, 2, 4, 6, 8].forEach((unitPos) => {
+  // Schlag-Trennlinien (Grundschlag der jeweiligen Taktart) + Taktende-Markierung
+  ts.beatTicks.forEach((unitPos) => {
     const tick = document.createElement('div');
     tick.className = 'beat-tick';
     tick.style.position = 'absolute';
     tick.style.top = '0';
     tick.style.bottom = '0';
-    tick.style.left = `${unitsToPercent(unitPos)}%`;
-    tick.style.width = unitPos === UNITS_PER_MEASURE ? '3px' : '1px';
-    tick.style.background = unitPos === UNITS_PER_MEASURE ? '#8a8a8a' : '#dedad0';
+    tick.style.left = `${unitsToPercent(unitPos, ts.units)}%`;
+    tick.style.width = unitPos === ts.units ? '3px' : '1px';
+    tick.style.background = unitPos === ts.units ? '#8a8a8a' : '#dedad0';
     tick.style.pointerEvents = 'none';
     track.appendChild(tick);
   });
@@ -270,14 +317,35 @@ function renderMeasure(measure, index) {
   track.appendChild(playhead);
 
   const beatLabels = document.createElement('div');
-  beatLabels.className = 'beat-labels';
-  beatLabels.innerHTML = ['1', '+', '2', '+', '3', '+', '4', '+']
-    .map((l) => `<span>${l}</span>`)
-    .join('');
+  beatLabels.className = ts.bottom === 8 ? 'beat-labels beat-labels-compound' : 'beat-labels';
+  beatLabels.style.gridTemplateColumns = `repeat(${ts.labels.length}, 1fr)`;
+  beatLabels.innerHTML = ts.labels.map((l) => `<span>${l}</span>`).join('');
+
+  const trackColumn = document.createElement('div');
+  trackColumn.className = 'track-column';
+  trackColumn.appendChild(track);
+  trackColumn.appendChild(beatLabels);
+
+  const repeatLabel = document.createElement('label');
+  repeatLabel.className = 'measure-repeat';
+  repeatLabel.title = 'Wie oft dieser Takt wiederholt wird';
+  repeatLabel.innerHTML = `
+    <input type="number" min="1" max="50" value="${measure.repeatCount}">
+    <span>×</span>
+  `;
+  repeatLabel.querySelector('input').addEventListener('change', (e) => {
+    const value = Math.max(1, Math.min(50, Math.round(Number(e.target.value)) || 1));
+    e.target.value = value;
+    measure.repeatCount = value;
+  });
+
+  const body = document.createElement('div');
+  body.className = 'measure-body';
+  body.appendChild(trackColumn);
+  body.appendChild(repeatLabel);
 
   wrap.appendChild(header);
-  wrap.appendChild(track);
-  wrap.appendChild(beatLabels);
+  wrap.appendChild(body);
 
   track.addEventListener('pointerdown', (e) => {
     // Klicks auf leeren Bereich der Spur sollen nichts auslösen; das Ziehen
@@ -287,12 +355,21 @@ function renderMeasure(measure, index) {
   return wrap;
 }
 
+function cycleTimeSignature(measureId) {
+  const measure = state.measures.find((m) => m.id === measureId);
+  if (!measure) return;
+  const idx = TIME_SIGNATURE_CYCLE.indexOf(measure.timeSignature);
+  measure.timeSignature = TIME_SIGNATURE_CYCLE[(idx + 1) % TIME_SIGNATURE_CYCLE.length];
+  renderMeasures();
+}
+
 // Zwei direkt aufeinanderfolgende einzelne Achtel werden als verbundenes
 // Paar mit gemeinsamem Balken dargestellt - unabhängig davon, auf welcher
 // Zählzeit sie stehen (auch wenn die erste z. B. bei "+" beginnt) und ob
 // sie über die "Achtelpaar"-Karte oder einzeln als "Achtel" hineingezogen
 // wurden.
 function renderMeasureNotes(track, measure) {
+  const capacity = timeSigOf(measure).units;
   const layout = layoutNotes(measure);
   let i = 0;
   while (i < layout.length) {
@@ -305,10 +382,10 @@ function renderMeasureNotes(track, measure) {
       next.start === cur.start + 1;
 
     if (canPair) {
-      track.appendChild(renderEighthPair(cur.note, next.note));
+      track.appendChild(renderEighthPair(cur.note, next.note, capacity));
       i += 2;
     } else {
-      track.appendChild(renderPlacedNote(cur.note, cur.type));
+      track.appendChild(renderPlacedNote(cur.note, cur.type, capacity));
       i += 1;
     }
   }
@@ -327,8 +404,8 @@ function attachNoteInteractions(el, noteId) {
   });
 }
 
-function renderPlacedNote(note, type) {
-  const pct = unitsToPercent(type.units);
+function renderPlacedNote(note, type, capacity) {
+  const pct = unitsToPercent(type.units, capacity);
   const el = document.createElement('div');
   el.className = 'placed-note';
   el.dataset.noteId = note.id;
@@ -348,8 +425,8 @@ function renderPlacedNote(note, type) {
 // eine einzelne Grafik zu verzerren. Jede Hälfte bleibt einzeln greifbar/
 // löschbar (eigene note-id), sitzt aber ohne eigenen Rahmen in einer
 // gemeinsamen Karte, damit es wie EIN Notenblock aussieht.
-function renderEighthPair(noteA, noteB) {
-  const pct = unitsToPercent(2);
+function renderEighthPair(noteA, noteB, capacity) {
+  const pct = unitsToPercent(2, capacity);
   const beamedIcon = noteType('quarter').icon;
   const el = document.createElement('div');
   el.className = 'placed-note-pair';
@@ -421,8 +498,11 @@ const dragGhost = document.getElementById('dragGhost');
 // aktuell gerenderten Taktbreite, damit sie zur jeweiligen Bildschirmgröße passt.
 function currentUnitPx() {
   const track = document.querySelector('.slot-track');
-  const width = track ? track.getBoundingClientRect().width : 320;
-  return width / UNITS_PER_MEASURE;
+  if (!track) return 320 / UNITS_PER_MEASURE;
+  const width = track.getBoundingClientRect().width;
+  const measure = state.measures.find((m) => m.id === track.dataset.measureId);
+  const capacity = measure ? timeSigOf(measure).units : UNITS_PER_MEASURE;
+  return width / capacity;
 }
 
 function startDragNew(e, paletteItem) {
@@ -514,7 +594,10 @@ function updateDragVisuals(clientX, clientY) {
   const excludeNoteId = drag.kind === 'move' ? drag.noteId : null;
   const { referenceEl } = computeDropIndex(track, clientX, excludeNoteId);
 
-  const pct = unitsToPercent(drag.units);
+  const measure = state.measures.find((m) => m.id === track.dataset.measureId);
+  const capacity = timeSigOf(measure).units;
+
+  const pct = unitsToPercent(drag.units, capacity);
   const preview = document.createElement('div');
   preview.className = `insert-preview${drag.isPair ? ' insert-preview-pair' : ''}`;
   preview.style.width = `${pct}%`;
@@ -525,13 +608,12 @@ function updateDragVisuals(clientX, clientY) {
   if (insertBeforeEl) track.insertBefore(preview, insertBeforeEl);
   else track.appendChild(preview);
 
-  const measure = state.measures.find((m) => m.id === track.dataset.measureId);
   const existingUnits = measure.notes.reduce(
     (sum, n) => sum + (n.id === excludeNoteId ? 0 : noteType(n.typeId).units),
     0
   );
   const wouldBeUnits = existingUnits + drag.units;
-  track.closest('.measure').classList.toggle('preview-overfull', wouldBeUnits > UNITS_PER_MEASURE);
+  track.closest('.measure').classList.toggle('preview-overfull', wouldBeUnits > capacity);
 }
 
 // Auto-Scroll beim Ziehen: kommt der Finger/Cursor nah an den oberen oder
@@ -748,15 +830,15 @@ function scheduleClick(startTime) {
 
 function play() {
   if (state.isPlaying) return;
+  if (anyMeasureOverfull()) return; // Übervolle Takte dürfen nicht abgespielt werden
   state.isPlaying = true;
   ensureAudioContext();
   playPauseBtn.textContent = '■ Stopp';
   playPauseBtn.classList.add('is-playing');
 
   const startAt = audioCtx.currentTime + 0.15;
-  const repeatCount = Math.max(1, Math.min(50, Math.round(Number(repeatInput.value)) || 1));
 
-  const timeline = buildTimeline(repeatCount);
+  const timeline = buildTimeline();
   startScheduler(timeline, startAt);
   startCursor();
 }
@@ -766,15 +848,24 @@ function play() {
 // beim tatsächlichen Verplanen der Zeiten ein (siehe scheduleAhead), damit
 // eine Tempo-Änderung während der Wiedergabe sofort für alles Kommende
 // wirkt, ohne stoppen und neu starten zu müssen.
-function buildTimeline(repeatCount) {
+//
+// Jeder Takt wird direkt hintereinander SEIN EIGENES repeatCount-mal
+// gespielt (nicht die gesamte Reihenfolge insgesamt N-mal) - "Takt 1 4x,
+// dann Takt 2 2x, ..." statt "die ganze Abfolge 4x".
+function buildTimeline() {
   let cursorUnits = 0;
   const noteEvents = []; // { unit, note, type, measureId }
-  const measureBoundaries = []; // { unit, measureId }
+  const measureBoundaries = []; // { unit, measureId, capacityUnits }
+  const clickUnitSet = new Set();
 
-  for (let rep = 0; rep < repeatCount; rep++) {
-    state.measures.forEach((measure) => {
+  state.measures.forEach((measure) => {
+    const ts = timeSigOf(measure);
+    const repeatCount = Math.max(1, Math.min(50, Math.round(measure.repeatCount) || 1));
+
+    for (let rep = 0; rep < repeatCount; rep++) {
       const measureStartUnits = cursorUnits;
-      measureBoundaries.push({ unit: measureStartUnits, measureId: measure.id });
+      measureBoundaries.push({ unit: measureStartUnits, measureId: measure.id, capacityUnits: ts.units });
+      for (let k = 0; k < ts.units; k += ts.clickInterval) clickUnitSet.add(measureStartUnits + k);
 
       measure.notes.forEach((note) => {
         const type = noteType(note.typeId);
@@ -783,25 +874,25 @@ function buildTimeline(repeatCount) {
       });
 
       const measureUsedUnits = cursorUnits - measureStartUnits;
-      if (measureUsedUnits < UNITS_PER_MEASURE) {
-        cursorUnits = measureStartUnits + UNITS_PER_MEASURE;
+      if (measureUsedUnits < ts.units) {
+        cursorUnits = measureStartUnits + ts.units;
       }
-    });
-  }
+    }
+  });
 
-  // Checkpoints: jede Notenstart-Unit UND jede gerade Unit (Grundschlag-Raster,
-  // unabhängig davon ob der Klick aktuell ein-/ausgeschaltet ist - das wird
+  // Checkpoints: jede Notenstart-Unit UND jeder Grundschlag-Klickpunkt
+  // (unabhängig davon ob der Klick aktuell ein-/ausgeschaltet ist - das wird
   // erst beim Verplanen live geprüft). Nur an diesen Punkten passiert etwas.
-  const checkpointSet = new Set();
-  for (let u = 0; u < cursorUnits; u += 2) checkpointSet.add(u);
+  const checkpointSet = new Set(clickUnitSet);
   noteEvents.forEach((e) => checkpointSet.add(e.unit));
   const checkpoints = Array.from(checkpointSet).sort((a, b) => a - b);
 
   return {
     totalUnits: cursorUnits,
     checkpoints,
+    clickUnitSet,
     noteByUnit: new Map(noteEvents.map((e) => [e.unit, e])),
-    measureByUnit: new Map(measureBoundaries.map((m) => [m.unit, m.measureId])),
+    measureByUnit: new Map(measureBoundaries.map((m) => [m.unit, m])),
   };
 }
 
@@ -841,12 +932,12 @@ function scheduleAhead() {
     const unitSeconds = 60 / state.bpm / 2;
     const time = s.nextTime;
 
-    if (unit % 2 === 0 && state.metronome) {
+    if (timeline.clickUnitSet.has(unit) && state.metronome) {
       scheduleClick(time);
     }
     if (timeline.measureByUnit.has(unit)) {
-      const measureId = timeline.measureByUnit.get(unit);
-      s.measureRealSegments.push({ measureId, startTime: time, endTime: time + UNITS_PER_MEASURE * unitSeconds });
+      const { measureId, capacityUnits } = timeline.measureByUnit.get(unit);
+      s.measureRealSegments.push({ measureId, startTime: time, endTime: time + capacityUnits * unitSeconds });
     }
     if (timeline.noteByUnit.has(unit)) {
       const { note, type } = timeline.noteByUnit.get(unit);
@@ -965,7 +1056,6 @@ const playPauseBtn = document.getElementById('playPauseBtn');
 const bpmSlider = document.getElementById('bpmSlider');
 const bpmValue = document.getElementById('bpmValue');
 const metronomeToggle = document.getElementById('metronomeToggle');
-const repeatInput = document.getElementById('repeatInput');
 const noteVolumeSlider = document.getElementById('noteVolumeSlider');
 const noteVolumeValue = document.getElementById('noteVolumeValue');
 const clickVolumeSlider = document.getElementById('clickVolumeSlider');
@@ -982,9 +1072,6 @@ bpmSlider.addEventListener('input', () => {
 });
 metronomeToggle.addEventListener('change', () => {
   state.metronome = metronomeToggle.checked;
-});
-repeatInput.addEventListener('change', () => {
-  repeatInput.value = Math.max(1, Math.min(50, Math.round(Number(repeatInput.value)) || 1));
 });
 noteVolumeSlider.addEventListener('input', () => {
   state.noteVolume = Number(noteVolumeSlider.value) / 100;
