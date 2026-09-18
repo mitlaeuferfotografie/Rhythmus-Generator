@@ -210,6 +210,31 @@ h1, h2, h3 { margin: 0; }
   flex: 0 0 auto;
 }
 
+/* QR-Code zum spontanen Öffnen der App auf Schüler-Tablets - eigene
+   schmale Spalte im Flyout, Bild oben, kurzer Hinweistext darunter. */
+.qr-share {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  max-width: 130px;
+  text-align: center;
+}
+.qr-share img {
+  width: 110px;
+  height: 110px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 4px;
+  background: white;
+}
+.qr-share span {
+  font-size: 0.75rem;
+  color: #6b6b6b;
+  line-height: 1.3;
+}
+
 /* ---------- Layout ---------- */
 
 /* Notenwerte-Palette liegt horizontal über den Takten (nicht mehr als

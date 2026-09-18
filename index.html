@@ -9,7 +9,7 @@
      Ohne Versionsnummer kann ein Browser sonst eine alte index.html mit
      einem neuen script.js mischen (oder umgekehrt) und abstürzen, wenn
      sich IDs/Struktur zwischen den Versionen geändert haben. -->
-<link rel="stylesheet" href="style.css?v=33">
+<link rel="stylesheet" href="style.css?v=34">
 </head>
 <body>
 
@@ -72,6 +72,14 @@
     Lautstärke Metronom: <span id="clickVolumeValue">50</span> %
     <input type="range" id="clickVolumeSlider" min="0" max="100" value="50">
   </label>
+  <!-- Fest lokal eingebettetes Bild statt eines Live-QR-Dienstes: kein
+       Drittanbieter-Request bei jedem Öffnen der Einstellungen, und
+       funktioniert auch offline (kein Internet auf dem Tablet nötig, um
+       den Code selbst anzuzeigen - nur zum Öffnen der App danach). -->
+  <div class="qr-share">
+    <img src="assets/qr-code.svg" alt="QR-Code zum Öffnen der App" width="110" height="110">
+    <span>Mit dem iPad scannen, um die App direkt zu öffnen</span>
+  </div>
 </div>
 
 <div id="dragGhost" class="drag-ghost" hidden></div>

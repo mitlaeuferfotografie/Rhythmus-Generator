@@ -59,6 +59,9 @@ Viertelnote.
   löschen oder neue hinein- bzw. verschieben wirkt sofort auf die laufende
   Wiedergabe, ohne stoppen und neu starten zu müssen - nur der jeweils
   nächste, schon ganz kurz bevorstehende Ton ist davon nicht mehr betroffen.
+- In den Einstellungen zeigt ein QR-Code direkt zur App - damit können
+  Schüler:innen spontan mit dem iPad/Handy scannen und selbst mitarbeiten,
+  ohne die Adresse abzutippen.
 
 Funktioniert mit Maus, Finger (Touch) und Stift, und passt sich jeder
 Bildschirmgröße an (kein horizontales Scrollen) – gedacht für den Einsatz auf
