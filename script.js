@@ -439,6 +439,15 @@ function renderMeasure(measure, index) {
     track.appendChild(overlay);
   }
 
+  // Kurz eingeblendete Warnung, wenn eine Note/Pause nicht abgelegt werden
+  // konnte, weil der Takt dadurch übervoll würde (siehe onDragEnd) - jeder
+  // Takt braucht seine eigene, da man in jeden ziehen kann.
+  const warning = document.createElement('div');
+  warning.className = 'measure-warning';
+  warning.hidden = true;
+  warning.innerHTML = '<span></span>';
+  track.appendChild(warning);
+
   const beatLabels = document.createElement('div');
   beatLabels.className = ts.bottom === 8 ? 'beat-labels beat-labels-compound' : 'beat-labels';
   beatLabels.style.gridTemplateColumns = `repeat(${ts.labels.length}, 1fr)`;
@@ -872,6 +881,7 @@ function stopAutoScroll() {
 function onDragEnd(e) {
   if (!drag) return;
   const track = trackUnderPoint(e.clientX, e.clientY);
+  let overfullMeasureId = null;
 
   if (track) {
     const measureId = track.dataset.measureId;
@@ -880,7 +890,13 @@ function onDragEnd(e) {
     const excludeNoteId = drag.kind === 'move' ? drag.noteId : null;
     const targetUnit = pushPastOverlaps(measure, excludeNoteId, targetUnitFromX(track, e.clientX, capacity), drag.units);
 
-    if (drag.kind === 'new') {
+    // Ein Takt darf durch Ablegen/Verschieben nicht übervoll werden - statt
+    // die Note trotzdem hinzuzufügen und den Takt rot/"Übervoll!" zu
+    // markieren, wird das Ablegen hier verweigert (Note bleibt bei "move"
+    // unverändert an ihrer alten Position) und kurz eine Meldung angezeigt.
+    if (targetUnit + drag.units > capacity) {
+      overfullMeasureId = measureId;
+    } else if (drag.kind === 'new') {
       if (drag.paletteItem.kind === 'pair') {
         addNoteToMeasure(measureId, { id: uid('n'), typeId: 'eighth', startUnit: targetUnit });
         addNoteToMeasure(measureId, { id: uid('n'), typeId: 'eighth', startUnit: targetUnit + 1 });
@@ -903,6 +919,25 @@ function onDragEnd(e) {
 
   cleanupDrag();
   renderMeasures();
+  // ERST NACH renderMeasures(): das baut pro Takt ein frisches (verstecktes)
+  // Warnungs-Overlay - würde die Meldung VORHER gesetzt, ginge sie durch
+  // das Neu-Rendern sofort wieder verloren.
+  if (overfullMeasureId) showMeasureWarning(overfullMeasureId, 'Takt ist zu voll dafür');
+}
+
+// Timeout sitzt AM Element selbst (nicht global) - sonst würde eine zweite
+// Warnung an einem ANDEREN Takt den Timer der ersten canceln, ohne sie zu
+// verstecken, und diese bliebe für immer sichtbar.
+function showMeasureWarning(measureId, text) {
+  const track = document.querySelector(`.slot-track[data-measure-id="${measureId}"]`);
+  const warning = track && track.querySelector('.measure-warning');
+  if (!warning) return;
+  warning.querySelector('span').textContent = text;
+  warning.hidden = false;
+  clearTimeout(warning._hideTimeout);
+  warning._hideTimeout = setTimeout(() => {
+    warning.hidden = true;
+  }, 1600);
 }
 
 function cleanupDrag() {

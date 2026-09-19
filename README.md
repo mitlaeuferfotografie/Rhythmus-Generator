@@ -33,11 +33,11 @@ Viertelnote.
   Trennlinien und Grundschlag passen sich automatisch an (6/8 klickt auf
   den zwei zusammengesetzten Schlägen statt auf jeder Achtel).
 - Ein Takt zeigt seinen Füllstand farbig an: grau = leer, amber = angefangen
-  aber noch nicht voll, grün ("Voll ✓") = genau voll, rot ("Übervoll!") =
-  mehr Noten als die Taktart erlaubt – die überzähligen Noten laufen dabei
-  sichtbar aus, statt einen Scrollbalken zu brauchen. "Abspielen" ist
-  deaktiviert, solange nicht JEDER Takt genau voll ist (also bei leeren,
-  offenen oder übervollen Takten) - erst wenn alle "Voll ✓" zeigen, geht's los.
+  aber noch nicht voll, grün ("Voll ✓") = genau voll. Eine Note/Pause, die
+  den Takt übervoll machen würde, lässt sich gar nicht erst dort ablegen -
+  statt dessen zeigt eine kurze rote Meldung ("Takt ist zu voll dafür"),
+  warum nichts passiert ist. "Abspielen" ist deaktiviert, solange nicht
+  JEDER Takt genau voll ist - erst wenn alle "Voll ✓" zeigen, geht's los.
 - "🎲 Zufall" im Takt-Kopf erzeugt einen zufälligen, aber garantiert
   passenden Rhythmus für diesen Takt (füllt ihn komplett, meist Noten,
   gelegentlich eine Pause für Abwechslung). "🧹 Leeren" daneben entfernt

@@ -670,6 +670,29 @@ main {
   background: var(--accent);
 }
 
+/* Kurz eingeblendete Warnung, wenn eine Note/Pause den Takt übervoll
+   gemacht hätte und deshalb NICHT abgelegt wurde (siehe onDragEnd in
+   script.js) - verschwindet nach kurzer Zeit von selbst wieder. */
+.measure-warning {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.measure-warning[hidden] { display: none; }
+.measure-warning span {
+  background: var(--warn);
+  color: white;
+  padding: 8px 18px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 1rem;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
 /* Gleich breiter, unsichtbarer Rahmen wie .slot-track, damit beide vom
    selben Innenbereich (100%) ausgehen - sonst driften Notenkopf und
    Zählzeiten-Zahl mit jeder weiteren Note leicht auseinander. */
