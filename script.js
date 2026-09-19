@@ -12,11 +12,14 @@ const UNITS_PER_MEASURE = 8; // Standard-Kapazität (4/4) - Fallback, wenn keine
 // (4/4 und 3/4: Klick auf jeder Viertel = alle 2 units; 6/8: Klick auf jedem
 // der zwei zusammengesetzten Schläge = alle 3 units). displayDivisor
 // rechnet units in die "X von Y"-Anzeige um (4/4, 3/4: Viertel = 2 units,
-// also /2; 6/8: 1 Achtel = 1 Zähleinheit, also /1).
+// also /2; 6/8: 1 Achtel = 1 Zähleinheit, also /1). Bei 6/8 klickt der
+// Grundschlag bewusst auf JEDER Achtel (clickInterval 1, nicht 3 für die
+// beiden zusammengesetzten Hauptschläge) - passend zur Zählzeiten-
+// Beschriftung, die ebenfalls alle sechs Achtel einzeln zeigt.
 const TIME_SIGNATURES = {
   '4/4': { top: 4, bottom: 4, units: 8, beatTicks: [0, 2, 4, 6, 8], labels: ['1', '+', '2', '+', '3', '+', '4', '+'], clickInterval: 2, displayDivisor: 2 },
   '3/4': { top: 3, bottom: 4, units: 6, beatTicks: [0, 2, 4, 6], labels: ['1', '+', '2', '+', '3', '+'], clickInterval: 2, displayDivisor: 2 },
-  '6/8': { top: 6, bottom: 8, units: 6, beatTicks: [0, 3, 6], labels: ['1', '2', '3', '4', '5', '6'], clickInterval: 3, displayDivisor: 1 },
+  '6/8': { top: 6, bottom: 8, units: 6, beatTicks: [0, 3, 6], labels: ['1', '2', '3', '4', '5', '6'], clickInterval: 1, displayDivisor: 1 },
 };
 const TIME_SIGNATURE_CYCLE = ['4/4', '3/4', '6/8'];
 
@@ -431,7 +434,7 @@ function renderMeasure(measure, index) {
   // (track) - so darf die Zahl so groß wie der komplette farbige Rahmen
   // werden, ohne an dessen overflow:hidden-Kante abgeschnitten zu werden.
   if (index === 0) {
-    const clickCount = ts.units / 2; // in Vierteln gezählt, siehe beginCountIn
+    const clickCount = ts.units / ts.clickInterval; // gleiches Raster wie beginCountIn
     const overlay = document.createElement('div');
     overlay.className = 'count-in-overlay';
     overlay.hidden = true;
@@ -1109,19 +1112,14 @@ function play() {
 // reicht eine einmalig fest verplante Sequenz.
 let countIn = null;
 
-// Zählt bewusst in VIERTELN (2 Achtel-Einheiten pro Klick), nicht im
-// taktart-spezifischen clickInterval des regulären Grundschlags: bei 6/8
-// klickt der normale Metronom-Klick während der Wiedergabe absichtlich nur
-// auf den 2 zusammengesetzten Hauptschlägen (punktierte Viertel, 1.5x so
-// lang) - das würde den Einzähler bei gleichem Tempo spürbar langsamer
-// wirken lassen als bei 4/4/3/4. Eine Viertel dauert dagegen bei jeder
-// Taktart gleich lang, das ist die Referenz, an der man Tempo tatsächlich
-// vergleicht.
+// Zählt im selben Klick-Raster wie der reguläre Grundschlag während der
+// Wiedergabe (ts.clickInterval) - bei 6/8 also auf jeder einzelnen Achtel
+// (clickInterval 1), bei 4/4 und 3/4 auf jeder Viertel (clickInterval 2).
 function beginCountIn(startTime) {
   const ts = timeSigOf(state.measures[0]);
-  const clickCount = ts.units / 2;
+  const clickCount = ts.units / ts.clickInterval;
   const unitSeconds = 60 / state.bpm / 2;
-  const clickDuration = 2 * unitSeconds;
+  const clickDuration = ts.clickInterval * unitSeconds;
 
   for (let i = 0; i < clickCount; i++) {
     scheduleClick(startTime + i * clickDuration);

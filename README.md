@@ -31,7 +31,7 @@ Viertelnote.
   Feld im Raster (in klassischer Notenschrift, zwei Ziffern übereinander)
   wählt zwischen 4/4, 3/4 und 6/8. Zählzeiten-Beschriftung, Schlag-
   Trennlinien und Grundschlag passen sich automatisch an (6/8 klickt auf
-  den zwei zusammengesetzten Schlägen statt auf jeder Achtel).
+  jeder einzelnen Achtel, passend zur Zählzeiten-Beschriftung "1-6").
 - Ein Takt zeigt seinen Füllstand farbig an: grau = leer, amber = angefangen
   aber noch nicht voll, grün ("Voll ✓") = genau voll. Eine Note/Pause, die
   den Takt übervoll machen würde, lässt sich gar nicht erst dort ablegen -
