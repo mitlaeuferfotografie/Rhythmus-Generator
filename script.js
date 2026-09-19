@@ -427,8 +427,11 @@ function renderMeasure(measure, index) {
   // bevor der eigentliche Rhythmus losgeht) - eigene Anzeige statt des
   // normalen Playheads, damit nicht der Eindruck entsteht, eine Note wäre
   // schon "dran", während in Wahrheit noch gar nichts aus dem Raster klingt.
+  // Sitzt bewusst auf der GANZEN Takt-Karte (wrap), nicht nur im Raster
+  // (track) - so darf die Zahl so groß wie der komplette farbige Rahmen
+  // werden, ohne an dessen overflow:hidden-Kante abgeschnitten zu werden.
   if (index === 0) {
-    const clickCount = ts.units / ts.clickInterval;
+    const clickCount = ts.units / 2; // in Vierteln gezählt, siehe beginCountIn
     const overlay = document.createElement('div');
     overlay.className = 'count-in-overlay';
     overlay.hidden = true;
@@ -436,7 +439,7 @@ function renderMeasure(measure, index) {
       <div class="count-in-number">1</div>
       <div class="count-in-dots">${'<span class="count-in-dot"></span>'.repeat(clickCount)}</div>
     `;
-    track.appendChild(overlay);
+    wrap.appendChild(overlay);
   }
 
   // Kurz eingeblendete Warnung, wenn eine Note/Pause nicht abgelegt werden
@@ -1106,11 +1109,19 @@ function play() {
 // reicht eine einmalig fest verplante Sequenz.
 let countIn = null;
 
+// Zählt bewusst in VIERTELN (2 Achtel-Einheiten pro Klick), nicht im
+// taktart-spezifischen clickInterval des regulären Grundschlags: bei 6/8
+// klickt der normale Metronom-Klick während der Wiedergabe absichtlich nur
+// auf den 2 zusammengesetzten Hauptschlägen (punktierte Viertel, 1.5x so
+// lang) - das würde den Einzähler bei gleichem Tempo spürbar langsamer
+// wirken lassen als bei 4/4/3/4. Eine Viertel dauert dagegen bei jeder
+// Taktart gleich lang, das ist die Referenz, an der man Tempo tatsächlich
+// vergleicht.
 function beginCountIn(startTime) {
   const ts = timeSigOf(state.measures[0]);
-  const clickCount = ts.units / ts.clickInterval;
+  const clickCount = ts.units / 2;
   const unitSeconds = 60 / state.bpm / 2;
-  const clickDuration = ts.clickInterval * unitSeconds;
+  const clickDuration = 2 * unitSeconds;
 
   for (let i = 0; i < clickCount; i++) {
     scheduleClick(startTime + i * clickDuration);
@@ -1121,13 +1132,13 @@ function beginCountIn(startTime) {
   const overlay = document.querySelector('.count-in-overlay');
   if (overlay) {
     overlay.hidden = false;
-    // Schriftgröße an die TATSÄCHLICHE Höhe des Rasters koppeln (nicht fix
-    // per CSS), damit die Zahl immer ungefähr so groß wie der Takt-Rahmen
-    // ist, unabhängig von Bildschirmgröße/Zoom.
-    const track = overlay.closest('.slot-track');
+    // Schriftgröße an die TATSÄCHLICHE Höhe der ganzen Takt-Karte koppeln
+    // (nicht fix per CSS), damit die Zahl immer ungefähr so groß wie der
+    // farbige Rahmen ist, unabhängig von Bildschirmgröße/Zoom.
+    const measureEl = overlay.closest('.measure');
     const numberEl = overlay.querySelector('.count-in-number');
-    if (track && numberEl) {
-      numberEl.style.fontSize = `${track.getBoundingClientRect().height * 0.95}px`;
+    if (measureEl && numberEl) {
+      numberEl.style.fontSize = `${measureEl.getBoundingClientRect().height * 0.9}px`;
     }
   }
 

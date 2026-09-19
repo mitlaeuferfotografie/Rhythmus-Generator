@@ -403,6 +403,7 @@ main {
 /* ---------- Measure ---------- */
 
 .measure {
+  position: relative;
   background: var(--paper);
   border: 3px solid var(--line);
   border-radius: 14px;
