@@ -360,7 +360,7 @@ function renderMeasure(measure, index) {
     <span class="measure-status">${statusText}</span>
   `;
 
-  // Zufalls-Rhythmus sitzt zwischen der Zählzeiten-Anzeige und "Wiederholungen".
+  // Zufalls-Rhythmus + Leeren sitzen zwischen der Zählzeiten-Anzeige und "Wiederholungen".
   const randomBtn = document.createElement('button');
   randomBtn.className = 'measure-randomize';
   randomBtn.type = 'button';
@@ -368,6 +368,14 @@ function renderMeasure(measure, index) {
   randomBtn.textContent = '🎲 Zufall';
   randomBtn.addEventListener('click', () => randomizeMeasure(measure.id));
   header.appendChild(randomBtn);
+
+  const clearBtn = document.createElement('button');
+  clearBtn.className = 'measure-randomize';
+  clearBtn.type = 'button';
+  clearBtn.title = 'Alle Noten/Pausen aus diesem Takt entfernen';
+  clearBtn.textContent = '🧹 Leeren';
+  clearBtn.addEventListener('click', () => clearMeasure(measure.id));
+  header.appendChild(clearBtn);
 
   // Wiederholungen sitzt links vom "×" im Kopf (nicht mehr neben dem Raster).
   const repeatLabel = document.createElement('label');
@@ -691,6 +699,13 @@ function randomizeMeasure(measureId) {
     position += units;
   }
   measure.notes = notes;
+  renderMeasures();
+}
+
+function clearMeasure(measureId) {
+  const measure = state.measures.find((m) => m.id === measureId);
+  if (!measure) return;
+  measure.notes = [];
   renderMeasures();
 }
 
@@ -1069,7 +1084,17 @@ function beginCountIn(startTime) {
   countIn = { startTime, clickCount, clickDuration, endTime: startTime + clickCount * clickDuration, lastShownIdx: -1 };
 
   const overlay = document.querySelector('.count-in-overlay');
-  if (overlay) overlay.hidden = false;
+  if (overlay) {
+    overlay.hidden = false;
+    // Schriftgröße an die TATSÄCHLICHE Höhe des Rasters koppeln (nicht fix
+    // per CSS), damit die Zahl immer ungefähr so groß wie der Takt-Rahmen
+    // ist, unabhängig von Bildschirmgröße/Zoom.
+    const track = overlay.closest('.slot-track');
+    const numberEl = overlay.querySelector('.count-in-number');
+    if (track && numberEl) {
+      numberEl.style.fontSize = `${track.getBoundingClientRect().height * 0.95}px`;
+    }
+  }
 
   return countIn.endTime;
 }

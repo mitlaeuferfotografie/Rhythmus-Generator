@@ -40,7 +40,8 @@ Viertelnote.
   offenen oder übervollen Takten) - erst wenn alle "Voll ✓" zeigen, geht's los.
 - "🎲 Zufall" im Takt-Kopf erzeugt einen zufälligen, aber garantiert
   passenden Rhythmus für diesen Takt (füllt ihn komplett, meist Noten,
-  gelegentlich eine Pause für Abwechslung).
+  gelegentlich eine Pause für Abwechslung). "🧹 Leeren" daneben entfernt
+  alle Noten/Pausen aus diesem Takt wieder.
 - Im Takt-Kopf wählt ein Dropdown ("Wdh."), wie oft genau DIESER Takt
   wiederholt wird (Standard: 4, frei von 1 bis 50), bevor es mit dem
   nächsten Takt weitergeht; "×" direkt daneben entfernt den ganzen Takt.
