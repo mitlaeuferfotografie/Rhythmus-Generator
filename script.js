@@ -1145,19 +1145,31 @@ function beginCountIn(startTime) {
 
 function updateCountInVisual(now) {
   if (!countIn) return;
-  const elapsed = now - countIn.startTime;
-  const idx = Math.max(0, Math.min(countIn.clickCount - 1, Math.floor(elapsed / countIn.clickDuration)));
-  if (idx === countIn.lastShownIdx) return;
-  countIn.lastShownIdx = idx;
-
   const overlay = document.querySelector('.count-in-overlay');
   if (!overlay) return;
   const numberEl = overlay.querySelector('.count-in-number');
+
+  // renderMeasures() kann WÄHREND des Einzählens laufen (Live-Editing ist ja
+  // während der Wiedergabe erlaubt) und baut dabei ein frisches, wieder
+  // verstecktes Overlay-Element ohne die dynamisch gesetzte Schriftgröße -
+  // beides hier bei JEDEM Frame absichern, nicht nur beim ersten Aufruf,
+  // sonst verschwindet die Anzeige beim nächsten Note-Ändern/Löschen.
+  overlay.hidden = false;
+  if (!numberEl.style.fontSize) {
+    const measureEl = overlay.closest('.measure');
+    if (measureEl) numberEl.style.fontSize = `${measureEl.getBoundingClientRect().height * 0.78}px`;
+  }
+
+  const elapsed = now - countIn.startTime;
+  const idx = Math.max(0, Math.min(countIn.clickCount - 1, Math.floor(elapsed / countIn.clickDuration)));
+  overlay.querySelectorAll('.count-in-dot').forEach((dot, i) => dot.classList.toggle('active', i <= idx));
+  if (idx === countIn.lastShownIdx) return;
+  countIn.lastShownIdx = idx;
+
   numberEl.textContent = String(idx + 1);
   numberEl.classList.remove('bounce');
   void numberEl.offsetWidth; // Reflow erzwingen, damit die Animation bei jedem Klick neu startet
   numberEl.classList.add('bounce');
-  overlay.querySelectorAll('.count-in-dot').forEach((dot, i) => dot.classList.toggle('active', i <= idx));
 }
 
 function endCountIn() {
