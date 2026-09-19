@@ -1138,7 +1138,7 @@ function beginCountIn(startTime) {
     const measureEl = overlay.closest('.measure');
     const numberEl = overlay.querySelector('.count-in-number');
     if (measureEl && numberEl) {
-      numberEl.style.fontSize = `${measureEl.getBoundingClientRect().height * 0.9}px`;
+      numberEl.style.fontSize = `${measureEl.getBoundingClientRect().height * 0.78}px`;
     }
   }
 

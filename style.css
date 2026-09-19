@@ -637,6 +637,10 @@ main {
   align-items: center;
   justify-content: center;
   gap: 10px;
+  /* Deutlich mehr Puffer unten als oben - schiebt die zentrierte Gruppe
+     optisch nach oben, damit die Punkte-Reihe den farbigen Kartenrand
+     nicht berührt. */
+  padding: 4px 0 28px;
   pointer-events: none;
 }
 .count-in-overlay[hidden] { display: none; }
