@@ -205,9 +205,18 @@ h1, h2, h3 { margin: 0; }
   gap: 4px;
 }
 
-.settings-panel .metronome-label,
+.settings-panel .metronome-group,
 .settings-panel .repeat-label {
   flex: 0 0 auto;
+}
+
+/* Grundschlag + Einzähler als Einheit gestapelt (nicht nebeneinander) -
+   der Wrapper selbst ist EIN Flex-Item im Panel, gestapelt sind nur die
+   zwei Checkboxen darin. */
+.metronome-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 /* QR-Code zum spontanen Öffnen der App auf Schüler-Tablets - eigene
@@ -612,6 +621,54 @@ main {
   display: none;
 }
 .playhead.active { display: block; }
+
+/* Einzähler-Overlay: schwebt transparent über dem ERSTEN Takt, solange
+   "Abspielen" vorzählt - bewusst kein Hintergrund, damit das Raster
+   dahinter die ganze Zeit gut sichtbar bleibt. Eigene Anzeige statt des
+   normalen Playheads (siehe tick() in script.js), damit während des
+   Zählens nicht der Eindruck entsteht, eine Note wäre schon "dran". */
+.count-in-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  pointer-events: none;
+}
+.count-in-overlay[hidden] { display: none; }
+
+.count-in-number {
+  font-size: 2.6rem;
+  font-weight: 700;
+  color: var(--accent);
+  opacity: 0.7;
+  line-height: 1;
+}
+.count-in-number.bounce {
+  animation: countInBounce 0.25s ease-out;
+}
+@keyframes countInBounce {
+  0% { transform: scale(1.5); opacity: 0.9; }
+  100% { transform: scale(1); opacity: 0.7; }
+}
+
+.count-in-dots {
+  display: flex;
+  gap: 8px;
+}
+.count-in-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--line);
+  transition: background 0.15s;
+}
+.count-in-dot.active {
+  background: var(--accent);
+}
 
 /* Gleich breiter, unsichtbarer Rahmen wie .slot-track, damit beide vom
    selben Innenbereich (100%) ausgehen - sonst driften Notenkopf und

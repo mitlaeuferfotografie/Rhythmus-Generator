@@ -159,6 +159,7 @@ const state = {
   measures: [],
   bpm: 90,
   metronome: true,
+  countIn: true,
   isPlaying: false,
   noteVolume: 0.6,
   clickVolume: 0.5,
@@ -413,6 +414,22 @@ function renderMeasure(measure, index) {
   const playhead = document.createElement('div');
   playhead.className = 'playhead';
   track.appendChild(playhead);
+
+  // Einzähler-Overlay sitzt NUR im ersten Takt (dort zählt "Abspielen" vor,
+  // bevor der eigentliche Rhythmus losgeht) - eigene Anzeige statt des
+  // normalen Playheads, damit nicht der Eindruck entsteht, eine Note wäre
+  // schon "dran", während in Wahrheit noch gar nichts aus dem Raster klingt.
+  if (index === 0) {
+    const clickCount = ts.units / ts.clickInterval;
+    const overlay = document.createElement('div');
+    overlay.className = 'count-in-overlay';
+    overlay.hidden = true;
+    overlay.innerHTML = `
+      <div class="count-in-number">1</div>
+      <div class="count-in-dots">${'<span class="count-in-dot"></span>'.repeat(clickCount)}</div>
+    `;
+    track.appendChild(overlay);
+  }
 
   const beatLabels = document.createElement('div');
   beatLabels.className = ts.bottom === 8 ? 'beat-labels beat-labels-compound' : 'beat-labels';
@@ -1022,11 +1039,65 @@ function play() {
   playPauseBtn.textContent = '■ Stopp';
   playPauseBtn.classList.add('is-playing');
 
-  const startAt = audioCtx.currentTime + 0.15;
+  const now = audioCtx.currentTime + 0.15;
+  const startAt = state.countIn ? beginCountIn(now) : now;
 
   const queue = buildMeasureQueue();
   startScheduler(queue, startAt);
   startCursor();
+}
+
+// Einzähler: zählt EINMAL einen vollen Takt der Taktart des ERSTEN Takts
+// vor (Klick-Raster wie beim normalen Grundschlag), bevor der eigentliche
+// Rhythmus im selben Tempo nahtlos weiterläuft - unabhängig vom
+// Grundschlag-Metronom-Schalter, da man sonst gar nicht hören würde, wann
+// es losgeht. Läuft NICHT über den Live-editierbaren Scheduler (der ist
+// für die lange Haupt-Wiedergabe gebaut) - für die paar kurzen Klicks
+// reicht eine einmalig fest verplante Sequenz.
+let countIn = null;
+
+function beginCountIn(startTime) {
+  const ts = timeSigOf(state.measures[0]);
+  const clickCount = ts.units / ts.clickInterval;
+  const unitSeconds = 60 / state.bpm / 2;
+  const clickDuration = ts.clickInterval * unitSeconds;
+
+  for (let i = 0; i < clickCount; i++) {
+    scheduleClick(startTime + i * clickDuration);
+  }
+
+  countIn = { startTime, clickCount, clickDuration, endTime: startTime + clickCount * clickDuration, lastShownIdx: -1 };
+
+  const overlay = document.querySelector('.count-in-overlay');
+  if (overlay) overlay.hidden = false;
+
+  return countIn.endTime;
+}
+
+function updateCountInVisual(now) {
+  if (!countIn) return;
+  const elapsed = now - countIn.startTime;
+  const idx = Math.max(0, Math.min(countIn.clickCount - 1, Math.floor(elapsed / countIn.clickDuration)));
+  if (idx === countIn.lastShownIdx) return;
+  countIn.lastShownIdx = idx;
+
+  const overlay = document.querySelector('.count-in-overlay');
+  if (!overlay) return;
+  const numberEl = overlay.querySelector('.count-in-number');
+  numberEl.textContent = String(idx + 1);
+  numberEl.classList.remove('bounce');
+  void numberEl.offsetWidth; // Reflow erzwingen, damit die Animation bei jedem Klick neu startet
+  numberEl.classList.add('bounce');
+  overlay.querySelectorAll('.count-in-dot').forEach((dot, i) => dot.classList.toggle('active', i <= idx));
+}
+
+function endCountIn() {
+  countIn = null;
+  const overlay = document.querySelector('.count-in-overlay');
+  if (!overlay) return;
+  overlay.hidden = true;
+  overlay.querySelector('.count-in-number').textContent = '1';
+  overlay.querySelectorAll('.count-in-dot').forEach((dot) => dot.classList.remove('active'));
 }
 
 // Legt nur die REIHENFOLGE fest (welcher Takt wie oft direkt hintereinander
@@ -1202,6 +1273,15 @@ function startCursor() {
     const now = audioCtx.currentTime;
     const s = scheduler;
 
+    if (countIn) {
+      if (now < countIn.endTime) {
+        updateCountInVisual(now);
+        cursorRAF = requestAnimationFrame(tick);
+        return; // während des Einzählens kein normaler Playhead/Noten-Highlight
+      }
+      endCountIn();
+    }
+
     document.querySelectorAll('.playhead.active').forEach((p) => p.classList.remove('active'));
 
     if (s) {
@@ -1244,6 +1324,7 @@ function stopCursor() {
   document.querySelectorAll('.playhead.active').forEach((p) => p.classList.remove('active'));
   document.querySelectorAll('.playing').forEach((el) => el.classList.remove('playing'));
   highlightedNoteIds = new Set();
+  if (countIn) endCountIn();
 }
 
 function stop() {
@@ -1281,6 +1362,7 @@ const playPauseBtn = document.getElementById('playPauseBtn');
 const bpmSlider = document.getElementById('bpmSlider');
 const bpmValue = document.getElementById('bpmValue');
 const metronomeToggle = document.getElementById('metronomeToggle');
+const countInToggle = document.getElementById('countInToggle');
 const noteVolumeSlider = document.getElementById('noteVolumeSlider');
 const noteVolumeValue = document.getElementById('noteVolumeValue');
 const clickVolumeSlider = document.getElementById('clickVolumeSlider');
@@ -1297,6 +1379,9 @@ bpmSlider.addEventListener('input', () => {
 });
 metronomeToggle.addEventListener('change', () => {
   state.metronome = metronomeToggle.checked;
+});
+countInToggle.addEventListener('change', () => {
+  state.countIn = countInToggle.checked;
 });
 noteVolumeSlider.addEventListener('input', () => {
   state.noteVolume = Number(noteVolumeSlider.value) / 100;

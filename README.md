@@ -55,6 +55,11 @@ Viertelnote.
   ihre eigene, korrekte Dauer, Pausen bleiben still. Ein laufender
   Zeigebalken zeigt dabei genau, wann eine Note dran ist. "Grundschlag"
   blendet einen leisen Klick auf jeder Zählzeit ein/aus.
+- "Einzähler" (standardmäßig an, in den Einstellungen unter "Grundschlag"
+  abschaltbar) zählt vor dem eigentlichen Rhythmus einmal einen vollen Takt
+  der ersten Taktart vor - eine große, halbtransparente Zahl über dem
+  ersten Takt zählt synchron zu den Klicks hoch, damit auf Anhieb klar ist,
+  wann es losgeht.
 - Auch WÄHREND des Abspielens lässt sich der Rhythmus verändern: Noten
   löschen oder neue hinein- bzw. verschieben wirkt sofort auf die laufende
   Wiedergabe, ohne stoppen und neu starten zu müssen - nur der jeweils
