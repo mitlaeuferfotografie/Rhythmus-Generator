@@ -1,14 +1,14 @@
 :root {
   --bg-1: #ffffff;
   --bg-2: #f1f5f9;
-  --bg-3: #020617;
+  --bg-3: #172554;
   --ink: #0f172a;
   --ink-soft: #64748b;
   --paper: #ffffff;
   --paper-alt: #f1f5f9;
   --line: #cbd5e1;
   --border-strong: #94a3b8;
-  --line-dark: #334155;
+  --line-dark: #1e3a8a;
   --accent: #f59e0b;
   --accent-light: #fbbf24;
   --accent-dark: #b45309;
@@ -85,7 +85,7 @@ h1, h2, h3 { margin: 0; }
   cursor: pointer;
   min-height: 48px;
 }
-.btn:hover { background: #0f172a; }
+.btn:hover { background: #1e3a8a; }
 
 .btn:disabled { opacity: 0.4; cursor: default; }
 
