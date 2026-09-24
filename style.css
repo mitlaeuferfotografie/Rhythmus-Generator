@@ -1,15 +1,24 @@
 :root {
-  --ink: #1a1a1a;
+  --bg-1: #f1f5f9;
+  --bg-2: #e2e8f0;
+  --bg-3: #1e3a8a;
+  --ink: #0f172a;
+  --ink-soft: #64748b;
   --paper: #ffffff;
-  --paper-alt: #f4f3ef;
-  --line: #c9c6bd;
-  --accent: #2f6fed;
-  --ok: #2f9e44;
-  --ok-bg: #e6f7ea;
-  --warn: #e03131;
-  --warn-bg: #fde8e8;
-  --pending: #e0932f;
-  --pending-bg: #fef3e2;
+  --paper-alt: #f1f5f9;
+  --line: #cbd5e1;
+  --border-strong: #94a3b8;
+  --line-dark: #2563eb;
+  --accent: #f59e0b;
+  --accent-light: #fbbf24;
+  --accent-dark: #b45309;
+  --star: #d97706;
+  --ok: #10b981;
+  --ok-bg: rgba(16, 185, 129, 0.14);
+  --warn: #e11d48;
+  --warn-bg: rgba(225, 29, 72, 0.12);
+  --pending: #f59e0b;
+  --pending-bg: rgba(245, 158, 11, 0.14);
   --measure-gap: 18px;
   font-size: 20px;
 }
@@ -20,9 +29,9 @@ html, body {
   margin: 0;
   padding: 0;
   min-height: 100%;
-  background: var(--paper-alt);
+  background: linear-gradient(160deg, var(--bg-1) 0%, var(--bg-2) 60%, #cbd5e1 100%);
   color: var(--ink);
-  font-family: "Segoe UI", Verdana, Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   -webkit-user-select: none;
   user-select: none;
   /* touch-action:none bewusst NICHT hier (würde jedes Scrollen auf der
@@ -31,6 +40,10 @@ html, body {
 }
 
 h1, h2, h3 { margin: 0; }
+
+/* Die Noten-/Pausen-SVGs in script.js sind fest dunkel gefüllt (#1a1a1a) -
+   auf dem jetzt hellen Kartengrund von Natur aus gut lesbar, kein
+   Filtertrick mehr nötig (anders als in der ersten, dunklen Testversion). */
 
 /* ---------- Toolbar ---------- */
 
@@ -42,8 +55,10 @@ h1, h2, h3 { margin: 0; }
   display: flex;
   align-items: center;
   padding: 10px 24px;
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--bg-3);
+  color: var(--accent-light);
+  border-bottom: 4px solid var(--line-dark);
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.35);
   position: sticky;
   top: 0;
   z-index: 20;
@@ -51,23 +66,30 @@ h1, h2, h3 { margin: 0; }
 
 .toolbar h1 {
   font-size: 1.3rem;
+  font-weight: 800;
   white-space: nowrap;
 }
 
+/* Dunkler "Chip"-Knopf, bewusst unabhängig davon, ob er gerade in der
+   dunklen Toolbar oder unten über dem hellen Seiteninhalt sitzt - so
+   bleibt der Amber-auf-Dunkel-Kontrast überall gleich gut lesbar (Amber
+   auf Weiß wäre zu blass). */
 .btn {
   font-size: 1.05rem;
+  font-weight: 700;
   padding: 12px 20px;
-  border: none;
-  border-radius: 10px;
-  background: #3a3a3a;
-  color: var(--paper);
+  border: 2px solid var(--line-dark);
+  border-radius: 12px;
+  background: var(--bg-3);
+  color: var(--accent-light);
   cursor: pointer;
   min-height: 48px;
 }
+.btn:hover { background: #1d4ed8; }
 
 .btn:disabled { opacity: 0.4; cursor: default; }
 
-.btn-secondary { background: #565656; }
+.btn-secondary { background: var(--bg-3); }
 
 /* "+ Takt" sitzt direkt unter der Taktliste (nicht mehr oben in der
    Werkzeugleiste) - ein Klick fügt den neuen Takt genau dort ein, wo man
@@ -76,9 +98,10 @@ h1, h2, h3 { margin: 0; }
   align-self: flex-start;
   margin-top: 4px;
   font-size: 1.05rem;
+  font-weight: 700;
   padding: 12px 24px;
-  border: 2px dashed var(--line);
-  border-radius: 10px;
+  border: 2px dashed var(--border-strong);
+  border-radius: 12px;
   background: transparent;
   color: var(--ink);
   cursor: pointer;
@@ -101,13 +124,13 @@ h1, h2, h3 { margin: 0; }
 
 .play-pause-btn {
   padding: 16px 36px;
-  border: none;
+  border: 2px solid var(--ok);
   border-radius: 999px;
   font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--paper);
-  background: var(--ok);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  font-weight: 700;
+  color: #ffffff;
+  background: linear-gradient(135deg, #34d399 0%, var(--ok) 100%);
+  box-shadow: 0 10px 22px rgba(16, 185, 129, 0.45);
   cursor: pointer;
   min-height: 56px;
   min-width: 200px;
@@ -115,6 +138,7 @@ h1, h2, h3 { margin: 0; }
 
 .play-pause-btn.is-playing {
   background: var(--warn);
+  border-color: var(--warn);
 }
 
 /* Solange mindestens ein Takt übervoll ist, darf gar nicht erst abgespielt
@@ -122,14 +146,15 @@ h1, h2, h3 { margin: 0; }
    zu tun. */
 .play-pause-btn:disabled {
   background: var(--line);
-  color: #8a8a8a;
+  border-color: var(--line);
+  color: var(--ink-soft);
   cursor: not-allowed;
   box-shadow: none;
 }
 
 .bottom-bar .btn-secondary {
   border-radius: 999px;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.25);
 }
 
 .tempo-label, .metronome-label, .volume-label {
@@ -143,11 +168,13 @@ h1, h2, h3 { margin: 0; }
 .tempo-label input[type="range"],
 .volume-label input[type="range"] {
   width: 140px;
+  accent-color: var(--accent);
 }
 
 .metronome-label input[type="checkbox"] {
   width: 22px;
   height: 22px;
+  accent-color: var(--accent);
 }
 
 /* Tempo/Grundschlag sind ein Flyout statt permanent in der
@@ -164,8 +191,9 @@ h1, h2, h3 { margin: 0; }
   bottom: 100px;
   background: var(--paper);
   color: var(--ink);
-  border-radius: 12px;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
+  border: 2px solid var(--line);
+  border-radius: 16px;
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.28);
   padding: 16px 20px;
   display: flex;
   flex-direction: row;
@@ -220,7 +248,9 @@ h1, h2, h3 { margin: 0; }
 }
 
 /* QR-Code zum spontanen Öffnen der App auf Schüler-Tablets - eigene
-   schmale Spalte im Flyout, Bild oben, kurzer Hinweistext darunter. */
+   schmale Spalte im Flyout, Bild oben, kurzer Hinweistext darunter. Der
+   QR-Code selbst bleibt bewusst schwarz auf weiß (nicht Teil des
+   Style-Tests) - sonst wird er auf Kamera-Scannern schlechter erkannt. */
 .qr-share {
   flex: 0 0 auto;
   display: flex;
@@ -240,7 +270,7 @@ h1, h2, h3 { margin: 0; }
 }
 .qr-share span {
   font-size: 0.75rem;
-  color: #6b6b6b;
+  color: var(--ink-soft);
   line-height: 1.3;
 }
 
@@ -252,7 +282,7 @@ h1, h2, h3 { margin: 0; }
   text-align: center;
   padding-top: 10px;
   border-top: 1px solid var(--line);
-  color: #6b6b6b;
+  color: var(--ink-soft);
   font-size: 0.85rem;
   text-decoration: none;
 }
@@ -294,7 +324,7 @@ h1, h2, h3 { margin: 0; }
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #9a968c;
+  color: var(--ink-soft);
 }
 
 /* Spaltenzahl kommt per JS (renderPalette) als --palette-cols - so viele
@@ -309,7 +339,7 @@ h1, h2, h3 { margin: 0; }
 .palette-hint {
   margin: 12px 0 0;
   font-size: 0.8rem;
-  color: #6b6b6b;
+  color: var(--ink-soft);
 }
 
 @media (max-width: 720px) {
@@ -355,8 +385,8 @@ main {
 .note-card {
   container-type: inline-size;
   background: var(--paper);
-  border: 2px solid var(--ink);
-  border-radius: 10px;
+  border: 3px solid var(--border-strong);
+  border-radius: 12px;
   cursor: grab;
   touch-action: none;
 }
@@ -374,6 +404,7 @@ main {
   align-items: center;
   gap: var(--palette-card-gap, 8px);
   padding: var(--palette-card-pad-y, 6px) var(--palette-card-pad-x, 10px);
+  color: var(--ink);
 }
 
 .note-card .icon {
@@ -395,12 +426,12 @@ main {
    Handy) darf der Name lieber zweizeilig umbrechen, als abgeschnitten oder
    überlappend zu wirken. */
 .note-card .label .name {
-  font-weight: 600;
+  font-weight: 700;
   font-size: var(--palette-name-size, 0.8rem);
 }
 .note-card .label .beats {
   font-size: var(--palette-beats-size, 0.68rem);
-  color: #6b6b6b;
+  color: var(--ink-soft);
 }
 
 /* Ist die Karte insgesamt zu schmal für Icon+Text nebeneinander, steht das
@@ -420,9 +451,10 @@ main {
   position: relative;
   background: var(--paper);
   border: 3px solid var(--line);
-  border-radius: 14px;
+  border-radius: 16px;
   padding: 12px 16px 16px;
   overflow: hidden;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.15);
   transition: border-color 0.15s, background 0.15s;
 }
 
@@ -447,21 +479,22 @@ main {
 }
 
 .measure-title {
-  font-weight: 600;
+  font-weight: 700;
   font-size: 1rem;
+  color: var(--ink);
 }
 
 .measure-status {
   font-size: 0.85rem;
   padding: 3px 10px;
   border-radius: 999px;
-  background: #e9e7e0;
-  color: #555;
+  background: var(--line);
+  color: var(--ink);
 }
 
-.measure.status-offen .measure-status { background: var(--pending); color: white; }
-.measure.status-voll .measure-status { background: var(--ok); color: white; }
-.measure.status-uebervoll .measure-status { background: var(--warn); color: white; }
+.measure.status-offen .measure-status { background: var(--pending); color: var(--bg-3); }
+.measure.status-voll .measure-status { background: var(--ok); color: var(--bg-3); }
+.measure.status-uebervoll .measure-status { background: var(--warn); color: #ffffff; }
 
 .measure-remove {
   background: none;
@@ -469,7 +502,7 @@ main {
   font-size: 1.3rem;
   line-height: 1;
   cursor: pointer;
-  color: #999;
+  color: var(--ink-soft);
   padding: 4px 8px;
 }
 .measure-remove:hover { color: var(--warn); }
@@ -484,7 +517,7 @@ main {
   border: 1px solid var(--line);
   border-radius: 999px;
   font-size: 0.8rem;
-  color: #6b6b6b;
+  color: var(--ink-soft);
   cursor: pointer;
   white-space: nowrap;
 }
@@ -503,7 +536,7 @@ main {
   border: 1px solid var(--line);
   border-radius: 999px;
   font-size: 0.8rem;
-  color: #6b6b6b;
+  color: var(--ink-soft);
   white-space: nowrap;
   cursor: default;
 }
@@ -512,6 +545,8 @@ main {
   padding: 2px 4px;
   border-radius: 6px;
   border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
   text-align: center;
 }
 
@@ -554,7 +589,7 @@ main {
   color: var(--ink);
   background: var(--paper-alt);
   border: 2px solid var(--line);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 6px 8px;
   cursor: pointer;
 }
@@ -571,8 +606,8 @@ main {
   flex-direction: column;
   background: var(--paper);
   border: 2px solid var(--line);
-  border-radius: 10px;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25);
+  border-radius: 12px;
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.25);
   padding: 4px;
   gap: 2px;
 }
@@ -593,12 +628,12 @@ main {
   color: var(--ink);
   background: none;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   padding: 6px 14px;
   cursor: pointer;
 }
 .time-sig-option:hover { background: var(--paper-alt); }
-.time-sig-option.is-selected { background: var(--accent); color: white; }
+.time-sig-option.is-selected { background: var(--accent); color: var(--bg-3); }
 
 .slot-track { grid-column: 2; grid-row: 1; }
 .beat-labels { grid-column: 2; grid-row: 2; }
@@ -610,13 +645,13 @@ main {
   min-height: 96px;
   width: 100%;
   border: 2px dashed var(--line);
-  border-radius: 10px;
+  border-radius: 12px;
   overflow: visible;
 }
 
 .slot-track.drag-over {
   border-color: var(--accent);
-  background-color: #eef3ff;
+  background-color: rgba(245, 158, 11, 0.12);
 }
 
 /* Laufender Zeigebalken beim Abspielen - läuft synchron zum Tempo über den
@@ -630,7 +665,7 @@ main {
   margin-left: -2px;
   background: var(--accent);
   border-radius: 2px;
-  box-shadow: 0 0 8px rgba(47, 111, 237, 0.7);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.7);
   pointer-events: none;
   z-index: 6;
   display: none;
@@ -662,8 +697,8 @@ main {
 .count-in-number {
   font-size: 7rem;
   font-weight: 700;
-  color: var(--accent);
-  opacity: 0.88;
+  color: var(--accent-dark);
+  opacity: 0.9;
   line-height: 1;
 }
 .count-in-number.bounce {
@@ -671,7 +706,7 @@ main {
 }
 @keyframes countInBounce {
   0% { transform: scale(1.4); opacity: 1; }
-  100% { transform: scale(1); opacity: 0.88; }
+  100% { transform: scale(1); opacity: 0.9; }
 }
 
 .count-in-dots {
@@ -704,12 +739,12 @@ main {
 .measure-warning[hidden] { display: none; }
 .measure-warning span {
   background: var(--warn);
-  color: white;
+  color: #ffffff;
   padding: 8px 18px;
   border-radius: 999px;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 1rem;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
 }
 
 /* Gleich breiter, unsichtbarer Rahmen wie .slot-track, damit beide vom
@@ -720,21 +755,22 @@ main {
   margin-top: 4px;
   border: 2px solid transparent;
   font-size: 0.75rem;
-  color: #8a8a8a;
+  color: var(--ink-soft);
   text-align: center; /* Zahl sitzt in der Spaltenmitte - genau da, wo auch der Notenkopf verankert ist */
 }
-.beat-labels span:nth-child(odd) { font-weight: 600; color: #555; }
+.beat-labels span:nth-child(odd) { font-weight: 700; color: var(--ink); }
 /* 6/8: jede Zahl ist ein eigener Achtel-Zählpunkt (kein "1 + 2 +"-Wechsel) -
    deshalb werden hier alle Zahlen gleich betont statt nur die ungeraden. */
-.beat-labels-compound span { font-weight: 600; color: #555; }
+.beat-labels-compound span { font-weight: 700; color: var(--ink); }
 
 .placed-note {
   position: relative;
   display: flex;
   align-items: center;
   background: var(--paper);
-  border: 2px solid var(--ink);
-  border-radius: 8px;
+  border: 3px solid var(--border-strong);
+  color: var(--ink);
+  border-radius: 10px;
   cursor: grab;
   touch-action: none;
   align-self: stretch;
@@ -753,7 +789,7 @@ main {
 
 .placed-note.playing {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(47,111,237,0.35);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.35);
 }
 
 /* Der Notenkopf sitzt IMMER an einer festen Position vom linken Rand der
@@ -779,7 +815,7 @@ main {
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  border: 2px solid var(--ink);
+  border: 2px solid var(--border-strong);
   background: var(--paper);
   color: var(--ink);
   font-size: 0.9rem;
@@ -790,7 +826,7 @@ main {
   justify-content: center;
   z-index: 2;
 }
-.placed-note .delete-btn:hover { background: var(--warn); color: white; border-color: var(--warn); }
+.placed-note .delete-btn:hover { background: var(--warn); color: #ffffff; border-color: var(--warn); }
 
 /* Achtelpaar: EINE gemeinsame Karte (wie jede andere Note), aber innen zwei
    unverzerrte Notenkopf-Grafiken (gleiche Form wie die Viertel, ohne
@@ -800,8 +836,8 @@ main {
   position: relative;
   display: flex;
   background: var(--paper);
-  border: 2px solid var(--ink);
-  border-radius: 8px;
+  border: 3px solid var(--border-strong);
+  border-radius: 10px;
   align-self: stretch;
 }
 
@@ -829,7 +865,7 @@ main {
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  border: 2px solid var(--ink);
+  border: 2px solid var(--border-strong);
   background: var(--paper);
   color: var(--ink);
   font-size: 0.9rem;
@@ -840,7 +876,7 @@ main {
   justify-content: center;
   z-index: 2;
 }
-.eighth-half .delete-btn:hover { background: var(--warn); color: white; border-color: var(--warn); }
+.eighth-half .delete-btn:hover { background: var(--warn); color: #ffffff; border-color: var(--warn); }
 .eighth-half .delete-btn-left { right: auto; left: -10px; }
 
 /* Balken: verbindet die Hälse der beiden Achtel - Position/Breite relativ
@@ -857,7 +893,7 @@ main {
 }
 
 .eighth-half.playing {
-  background: rgba(47, 111, 237, 0.18);
+  background: rgba(245, 158, 11, 0.18);
   border-radius: 6px;
   box-shadow: inset 0 0 0 2px var(--accent);
 }
@@ -872,12 +908,12 @@ main {
   top: 0;
   bottom: 0;
   border: 2px dashed var(--accent);
-  border-radius: 8px;
-  background: rgba(47, 111, 237, 0.08);
+  border-radius: 10px;
+  background: rgba(245, 158, 11, 0.1);
   opacity: 0.85;
   z-index: 3;
 }
-.insert-preview .icon { opacity: 0.6; }
+.insert-preview .icon { opacity: 0.7; }
 
 /* Ohne display:flex fehlt den beiden .eighth-half-Hälften (die sich sonst
    auf den flex-Kontext von .placed-note-pair verlassen) ihr Nebeneinander -
@@ -886,7 +922,7 @@ main {
 .insert-preview-pair {
   display: flex;
 }
-.insert-preview-pair .beam-bar { opacity: 0.6; }
+.insert-preview-pair .beam-bar { opacity: 0.7; }
 
 .measure.preview-overfull {
   border-color: var(--warn);
@@ -894,7 +930,7 @@ main {
 }
 .measure.preview-overfull .insert-preview {
   border-color: var(--warn);
-  background: rgba(224, 49, 49, 0.1);
+  background: rgba(225, 29, 72, 0.12);
 }
 .measure.preview-overfull .slot-track {
   -webkit-mask-image: linear-gradient(to right, black 0, black 92%, transparent 100%);
@@ -937,4 +973,3 @@ main {
 .drag-ghost .placed-note-pair {
   height: 96px;
 }
-
