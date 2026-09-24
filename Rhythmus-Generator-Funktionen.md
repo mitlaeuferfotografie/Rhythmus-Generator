@@ -2,7 +2,7 @@
 
 ## 1. Stand
 
-20.09.2026
+24.09.2026
 
 Diese Übersicht beschreibt ausschließlich das, was im Programmcode tatsächlich eingebaut ist – keine geplanten oder denkbaren Funktionen.
 
@@ -43,6 +43,12 @@ Diese Übersicht beschreibt ausschließlich das, was im Programmcode tatsächlic
 - Die App passt ihr Layout automatisch an die Bildschirmgröße an (kein seitliches Scrollen nötig)
 - Funktioniert gleichermaßen mit Maus, Finger (Touch) und Stift
 - In den Einstellungen liegt ein QR-Code, mit dem Schüler:innen die App direkt über ihr eigenes Tablet/Smartphone öffnen können
+
+**Design und Navigation (seit dem Redesign am 24.09.2026)**
+- Helle Slate-Optik mit royalblauer Kopfleiste - identisch zu Rhythmus-Trainer, Noten-Rätsel und der Musik-Apps-Übersicht, damit der Wechsel zwischen den Apps nahtlos wirkt
+- 🎵-Icon vor dem Titel "Rhythmus-Generator" in der Kopfleiste
+- Oben rechts in der Kopfleiste führt ein Pfeil-Link ("← Musik-Apps") zurück zur Übersichtsseite aller Musik-Apps
+- In den Einstellungen ganz unten ein klar beschrifteter "Impressum"-Link (führt zur zentralen Impressum-/Datenschutzseite der Musik-Apps)
 
 ## 3. Was die App NICHT kann
 
