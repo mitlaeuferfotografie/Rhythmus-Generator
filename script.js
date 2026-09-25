@@ -201,11 +201,22 @@ function measureStatus(measure) {
   return 'offen';
 }
 
-// Abspielen ist nur sinnvoll, wenn jeder Takt exakt voll ist - ein "offener"
-// Takt hat noch unnotierte Lücken, ein "übervoller" passt nicht in die
-// Taktart. Beides würde beim Abspielen falsch/unvollständig klingen.
+// Abspielen blockiert nur bei "offenen" (angefangen, aber noch mit
+// unnotierten Lücken) oder "übervollen" Takten - beides würde beim
+// Abspielen falsch/unvollständig klingen. Ein komplett UNBERÜHRTER
+// ("leerer") Takt blockiert bewusst NICHT mehr: z.B. wenn versehentlich
+// ein zweiter Takt per "+ Takt" angelegt, aber nie befüllt wurde, sollte
+// der bereits fertige erste Takt trotzdem abspielbar sein, statt dass man
+// erst den überflüssigen leeren Takt wieder entfernen muss. Leere Takte
+// werden beim Abspielen einfach übersprungen (siehe buildMeasureQueue).
+function blockingMeasureStatus(measure) {
+  const status = measureStatus(measure);
+  return status === 'offen' || status === 'uebervoll';
+}
+
 function allMeasuresFull() {
-  return state.measures.every((m) => measureStatus(m) === 'voll');
+  const hasPlayableContent = state.measures.some((m) => measureStatus(m) === 'voll');
+  return hasPlayableContent && !state.measures.some(blockingMeasureStatus);
 }
 
 // Formatiert eine Achtel-"unit"-Anzahl als Zählzeiten-Zahl für die
@@ -335,7 +346,13 @@ function renderMeasures() {
 function updatePlayAvailability() {
   const blocked = !allMeasuresFull();
   playPauseBtn.disabled = blocked && !state.isPlaying;
-  playPauseBtn.title = blocked ? 'Jeder Takt muss vollständig ausgefüllt sein, um abspielen zu können' : '';
+  if (!blocked) {
+    playPauseBtn.title = '';
+  } else if (state.measures.some(blockingMeasureStatus)) {
+    playPauseBtn.title = 'Jeder begonnene Takt muss vollständig ausgefüllt sein, um abspielen zu können - leere Takte sind kein Problem';
+  } else {
+    playPauseBtn.title = 'Noch keine Noten platziert';
+  }
 }
 
 function renderMeasure(measure, index) {
@@ -1089,7 +1106,7 @@ function scheduleClick(startTime) {
 
 function play() {
   if (state.isPlaying) return;
-  if (!allMeasuresFull()) return; // Nur vollständig ausgefüllte Takte dürfen abgespielt werden
+  if (!allMeasuresFull()) return; // siehe allMeasuresFull() - leere Takte blockieren nicht, offene/übervolle schon
   state.isPlaying = true;
   ensureAudioContext();
   playPauseBtn.textContent = '■ Stopp';
@@ -1116,7 +1133,11 @@ let countIn = null;
 // Wiedergabe (ts.clickInterval) - bei 6/8 also auf jeder einzelnen Achtel
 // (clickInterval 1), bei 4/4 und 3/4 auf jeder Viertel (clickInterval 2).
 function beginCountIn(startTime) {
-  const ts = timeSigOf(state.measures[0]);
+  // Erster tatsächlich abgespielter (nicht-leerer) Takt statt zwingend
+  // state.measures[0] - sonst würde ein versehentlich leer gelassener
+  // ERSTER Takt den Einzähler in dessen (evtl. falscher) Taktart vorzählen.
+  const firstPlayable = state.measures.find((m) => measureStatus(m) === 'voll') || state.measures[0];
+  const ts = timeSigOf(firstPlayable);
   const clickCount = ts.units / ts.clickInterval;
   const unitSeconds = 60 / state.bpm / 2;
   const clickDuration = ts.clickInterval * unitSeconds;
@@ -1192,6 +1213,7 @@ function endCountIn() {
 function buildMeasureQueue() {
   const queue = [];
   state.measures.forEach((measure) => {
+    if (measureStatus(measure) === 'leer') return; // unberührte Takte werden einfach übersprungen, nicht als Stille mitgespielt
     const repeatCount = Math.max(1, Math.min(50, Math.round(measure.repeatCount) || 1));
     for (let rep = 0; rep < repeatCount; rep++) queue.push(measure.id);
   });
