@@ -27,7 +27,7 @@ Diese Übersicht beschreibt ausschließlich das, was im Programmcode tatsächlic
 - Ein Farbrahmen zeigt den Füllstand: grau = leer, orange = angefangen, grün = genau voll
 
 **Abspielen**
-- "Abspielen" ist nur klickbar, wenn jeder vorhandene Takt genau voll ist
+- "Abspielen" ist klickbar, sobald mindestens ein Takt genau voll ist und kein anderer Takt "angefangen" (halb befüllt) oder "übervoll" ist - ein komplett unberührter, leerer Takt (z.B. versehentlich per "+ Takt" zusätzlich angelegt) blockiert NICHT und wird beim Abspielen einfach übersprungen (seit 24.09.2026 - vorher musste jeder vorhandene Takt genau voll sein, auch nie befüllte)
 - Jeder Takt kann einzeln oft wiederholt werden (1–50 mal), bevor der nächste Takt beginnt
 - Ein Einzähler zählt vor Beginn einen vollen Takt im eingestellten Tempo per Metronom-Klick vor (große Zahl + Punkte-Anzeige), lässt sich in den Einstellungen abschalten
 - Während des Abspielens läuft ein Zeigebalken mit, und die gerade klingende Note wird farblich hervorgehoben
